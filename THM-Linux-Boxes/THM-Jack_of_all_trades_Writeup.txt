@@ -1,0 +1,21 @@
+10.10.157.200
+
+22 : http
+80 : ssh
+
+steghide cred
+jack : u?WtKSraq
+
+Here you go Jack. Good thing you thought ahead!
+
+Username: jackinthebox
+Password: TplFxiSHjY
+
+ssh 
+user : jack
+pass : ITMJpGGIqg1jn?>@
+
+user.jpg : securi-tay2020_{p3ngu1n-hunt3r-3xtr40rd1n41r3}
+
+use strings on /root/root.txt
+root flag : securi-tay2020_{6f125d32f38fb8ff9e720d2dbce2210a}

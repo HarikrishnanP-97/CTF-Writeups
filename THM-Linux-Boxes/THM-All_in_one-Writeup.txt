@@ -1,0 +1,26 @@
+21 : ftp anonymous login allowed 
+22 : open ssh
+80 : apache default
+
+cred 
+user : elyana
+pass : H@ckme@123
+
+user: elyana
+password: E@syR18ght
+
+ssh into elyana on port 22 with the cred 
+user.txt :: THM{49jg666alb5e76shrusn49jg666alb5e76shrusn}
+
+possible privescs ::
+1.crontab (script.sh)
+2.SUID binary (socat)
+
+cat /etc/crontab
+script.sh is running every minute and is writable 
+
+add a python3 reverse shell into the script.sh and listen with nc on port 4444
+
+root.txt :: THM{uem2wigbuem2wigb68sn2j1ospi868sn2j1ospi8}
+ 
+ 

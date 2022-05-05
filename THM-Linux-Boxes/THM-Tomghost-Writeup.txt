@@ -1,0 +1,35 @@
+Tomghost | tryhackme
+
+nmap open ports  
+---------------
+2/tcp   open  ssh        OpenSSH 7.2p2 Ubuntu 4ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+53/tcp   open  tcpwrapped
+8009/tcp open  ajp13      Apache Jserv (Protocol v1.3)
+8080/tcp open  http       Apache Tomcat 9.0.30
+
+> visiting the 8080 , has a default tomcat page with a version no which is vulnerable to apache ghostcat vulnerability of 2020
+> cve-2020-1938
+> searchsploit the ghostcat and found that metasploit has an auxiliary scanner for ghostcat vulnerability 
+> running the auxiliary module gives the following credentials
+	
+	skyfuck:8730281lkjlkjdqlksalks
+
+> ssh into the machine with this credentials 
+> contains a pgp file and a sc file 
+> using pgp2john to convert the pgp file to john format and cracking it with john gives the following password 
+	
+	alexandru
+
+> gpg --import tryhackme.asc
+> provede the cracked password
+> gpg --decrypt credential.pgp
+> and we get another credentials for merlin user
+
+merlin:asuyusdoiuqoilkda312j31k2j123j1g23g12k3g12kj3gk12jg3k12j3kj123j
+
+> ssh into merlin with the password and grab the user.txt from the merlin home directory 
+> sudo -l and we see we can run zip as sudo 
+> GTFObins for zip and we have an exploit for zip 
+> using the exploit and we are root
+> grab the root.txt from /root
+ 

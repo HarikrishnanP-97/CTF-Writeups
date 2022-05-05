@@ -1,0 +1,23 @@
+2 open ports and 1 filtered port
+
+21 : ftp : filtered
+22 : ssh : open
+8080 : phpbb : open 
+
+checking the blog gave a hint about knocking so tried port knocking and found anonymous login in port 21 ftp
+found a note.txt saying 
+Connect to port 4420, the password is sardinethecat.
+- catlover
+
+found a file named runme which can only be run in a regular terminal
+reverse shell to  nc and got a shell 
+running the runme file exposed credential rebecca
+running runme as rebecca as password provide with a id_rsa
+copied the id_rsa and ssh into the ip as catlover 
+grab the flag1
+
+checking the /opt directory showed that there is a clean.sh running as a cronjob
+replace the content of the clean.sh with a reverse shell and grab it with nc 
+we are root !!!
+grab the root flag from the root directory \
+

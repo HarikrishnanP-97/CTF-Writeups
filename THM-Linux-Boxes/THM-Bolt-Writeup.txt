@@ -1,0 +1,20 @@
+10.10.159.167
+
+22 : ssh
+80 : httpd
+8000 : bolt cms
+
+possible username and password found from the site 
+bolt : boltadmin123
+
+finding the bolt cms version 
+browse to ip:8000/bolt/login
+and login with the provided credentials 
+
+open metasploit and search for bolt exploits
+select the exploit and set username, password, rhost, lhost
+exploit
+
+the flag can be found in the /root
+
+THM{wh0_d035nt_l0ve5_b0l7_r1gh7?

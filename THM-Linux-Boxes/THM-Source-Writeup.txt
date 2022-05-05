@@ -1,0 +1,19 @@
+scan the ip and found 2 open ports
+22 : ssh
+10000 : httpd 
+
+nmap found that the port 10000 is running webmin and visiing the port brings up a login form
+
+searchsploit the webmin and found that there are a few webmin exploits in metaploit
+
+boot up metasploit and search for webmin exploits
+
+found a cgi backdoor and used it 
+
+set RHOST,LHOST,SSL = true
+
+running it will give us immediate root access and no need to priv esc later 
+
+grab the user.txt from the /home/dark/user.txt
+
+grab the root.txt from /root/root.txt

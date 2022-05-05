@@ -1,0 +1,64 @@
+10.10.143.182
+
+22 : ssh
+30024 : ftp
+
+anonymous ftp allowed and has an id_rsa and a note.txt
+the ssh key is encrypted so it needs to be decrypted to crack password 
+ssh2hohn the id_rsa and crack it using rocyou.txt
+found the password cupcake
+
+errorcauser : cupcake 
+
+login with ssh cred and rsa key
+
+
+port forwarding
+check /etc/proxychains and set the proxy to 
+socks5  127.0.0.1 1337
+
+now scan the localhost with 
+proxychains nmap -sT 127.0.0.1
+
+after findng the port of web server (80)
+perform local port forwarding to the port using the -L flag
+sudo ssh -i id_rsa -L 80:127.0.0.1:80 errorcauser@10.10.11.45
+
+we are logged in and check the 127.0.0.1 to see the site 
+
+the 127.0.0.1:80 is a wordpress site 
+
+scan with nmap script http-wordpress-enum for vulnerabilities 
+nmap -p 80 -vv --script http-wordpress-enum --script-args type="plugins",search-limit=1500 127.0.0.1
+
+found 2 possible vulnerabilities 
+1) duplicator 
+2) wp-file-manager
+
+checking them in google 
+found that wp-file-manager vulnerability has an exploit in metasploit 
+
+fire up metasploit
+search for wp-file-manager , choose the exploit , set necessary options , exploit
+meterpreter shell
+type shell for a shell and run pyton pty module for elevated shell
+
+search for user.txt
+
+check for interesting files owned by the user using
+find / -type f -user cth -exec ls {} + 2>/dev/null
+
+found /var/log/bash.log 
+checking it gives out a password 
+
+G00dP@$sw0rd2020
+
+changing the 2020 to 2021 in the password and trying it against sudo -l for the user
+we can run any command using sudo 
+
+sudo /bin/bash -p
+
+we are root !!!
+
+grab the root flag from /root/root.txt
+

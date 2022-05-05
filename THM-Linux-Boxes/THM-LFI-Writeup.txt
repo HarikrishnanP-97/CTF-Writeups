@@ -1,0 +1,25 @@
+10.10.28.135
+
+a box dedicated for LFI vulnerability
+
+open ports 
+22 : ssh
+80 : web server
+
+click on any link within the site and the url bar will present us with a chance for LFI in a golden platter 
+check the /etc/passwd file using the directory traversal attack  
+url../../../etc/passwd
+grab the credentials 
+falconfeast : rootpassword 
+
+ssh into the box with the credentials 
+
+user.txt in the falcon feast home directory 
+
+check for possible priv esc by sudo -l
+possibility in a golden platter again !!!
+falconfeast can run /usr/in/socat as root using sudo
+check gtfobins and run the exploit and we are root 
+
+root flag in the usual /root/root.txt  
+

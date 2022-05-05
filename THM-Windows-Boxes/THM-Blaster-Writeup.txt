@@ -1,0 +1,14 @@
+found the possible username from the blog and password from the comment section
+logged in to the remote system as wade using RDP
+found user.txt in the desktop
+found a executable file in the desktop which shows that the machine is vulnerable to CVE-2019-1388
+getting more info about the cve it can be used for privilage escalation in the machine
+####
+1) click on thr executable file 
+2) show more info 
+3) click on the link and a browser will pop up
+4) hit ctrl+s and a file explorer will open 
+5) type cmd and press enter and we have a cmd shell with elevated access
+6) we are nt authority/system
+####
+

