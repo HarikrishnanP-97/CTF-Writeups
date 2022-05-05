@@ -1,0 +1,49 @@
+10.10.10.56 : Shocker : HackTheBox
+
+nmap scan
+---------
+80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+2222/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.2 (Ubuntu Linux; protocol 2.0)
+
+gobuster-initial
+-----------------
+/.hta                 (Status: 403) [Size: 290]
+/.htaccess            (Status: 403) [Size: 295]
+/.htpasswd            (Status: 403) [Size: 295]
+/cgi-bin/             (Status: 403) [Size: 294]
+/index.html           (Status: 200) [Size: 137]
+/server-status        (Status: 403) [Size: 299]
+
+* the cgi-bin was an interesting finding and browsing to it showed forbidden
+* gobuster it again with the cgi-bin in the path
+
+gobuster-cgi
+-------------
+/.hta.cgi             (Status: 403) [Size: 302]
+/.hta                 (Status: 403) [Size: 298]
+/.hta.sh              (Status: 403) [Size: 301]
+/.htaccess.cgi        (Status: 403) [Size: 307]
+/.htpasswd.cgi        (Status: 403) [Size: 307]
+/.htaccess            (Status: 403) [Size: 303]
+/.htpasswd.sh         (Status: 403) [Size: 306]
+/.htaccess.sh         (Status: 403) [Size: 306]
+/.htpasswd            (Status: 403) [Size: 303]
+/user.sh              (Status: 200) [Size: 118]
+ 
+* found user.sh
+* the machine might be vulnerable to shellshock
+* googling for shellshock and found that the shellshovk vulnerability has a metasploit exploit
+* start metasploit and search for shellshock and choose the exploit 
+* set the necessary options
+* run and we get a meterpreter shell
+* shell bash -i to get a regular shell
+* and we can see that we are logged in as shelly
+* user.txt in /home/shelly
+user.txt : b959d2b1f0d7b82c8905008a3481de3b
+
+* sudo -l revealed that shelly can run perl as root
+* searching gtfobins for an exploit 
+* run the perl sudo exploit with perl 
+* and we are root !
+* root.txt in /root/root.txt
+root.txt : a3e73f614696c11938bd26d8bab12ef3

