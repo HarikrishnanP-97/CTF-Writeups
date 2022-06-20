@@ -1,0 +1,72 @@
+ip : 10.10.11.143
+domain : office.paper
+
+Nmap
+----
+- nmap scans reveal 3 ports 22, 80 and 443
+- visiting 80 and 443 gives us nothing 
+
+Enum
+----
+- sending the request through burp repeater gives us the domain name office.paper
+- save the hostname to /etc/hosts file 
+- visiting office.paper we have a wordpress site
+- bruteforce the domain name for sub domains and we get chat.office.paper
+
+	ffuf -u http://office.paper/ -H "Host: FUZZ.office.paper" -w /opt/SecLists/Discovery/DNS/subdomains-top1million-5000.txt -c -fs 199691
+
+- add chat.office.paper to /etc/hosts
+- further enumeration on office.paper
+- we found out its a wordpress site from the footer
+- running wpscan against it 
+
+	wpscan --url http://office.paper
+
+- we get the version of the wordpress which is 5.2.3
+- we found few vulnerability for wordpress 5.2.3 one of which is unauthentic view drafts 
+
+	http://office.paper/?static=1  
+
+- we can see the drafts now 
+- one of the drafts reveals registration link for new user
+
+	http://chat.office.paper/register/8qozr226AhkCHZdyY
+
+- following the link lets us register as a user into chat.paper.htb
+- we have a bot named recyclops in the chat site
+- recyclops can read or list files
+- using the help of the bot we can read the /etc/passwd file with lfi
+- cheking around the file system with the help of the bot we found credentials in ../hubot/.env
+
+creds : Queenofblad3s!23
+
+- checking the password with user dwight using crackmapexec
+	
+	crackmapexec ssh 10.10.11.143 -u dwight -p 'Queenofblad3s!23'
+
+- and we get a hit 
+- ssh as the user dwight into the machine 
+- grab the user flag
+
+Priv-esc
+--------
+- setting up a python server and getting linux-exploit-suggester on the victim machine 
+- running it tells us that the machine is vulnerable to multiple exploits and several CVE showed up
+- the polkit vulnerability is the one we need to concentrate on 
+- download the exploit from the github and get the poc.sh on the victim machine through a python server
+- run the exploit and a new user with all sudo rights will be created 
+	
+	creds : secnigma : secnigmaftw
+
+- use su to change into the user as informed in the exploit readme
+
+	su - secnigma
+
+- check the sudo rights for the user using sudo -l and we can see that we have all rights 
+- we can have a root shell when we run 
+	
+	sudo bash
+
+- grab the root flag
+
+	root flag : 5f10ba644d15c77533b5e134ee769022        
